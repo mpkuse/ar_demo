@@ -38,7 +38,7 @@ int COL;
 double FOCAL_LENGTH;
 const int axis_num = 0;
 const int cube_num = 1;
-const double box_length = 0.8;
+double box_length = 0.8;
 bool USE_UNDISTORED_IMG;
 bool pose_init = false;
 int img_cnt = 0;
@@ -524,6 +524,9 @@ int main( int argc, char** argv )
     ros::init(argc, argv, "points_and_lines");
     ros::NodeHandle n("~");
     object_pub = n.advertise<visualization_msgs::MarkerArray>("AR_object", 10);
+    n.getParam("box_length", box_length);
+    ROS_INFO_STREAM( "Box Length (in meters): "<< box_length);
+
     n.getParam("use_undistored_img", USE_UNDISTORED_IMG);
     ros::Subscriber sub_img;
     if (USE_UNDISTORED_IMG)
