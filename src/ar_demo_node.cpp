@@ -552,7 +552,12 @@ int main( int argc, char** argv )
     Axis[4]= Vector3d(5, 10, -5);
     Axis[5] = Vector3d(0, 10, -1);
 
-    Cube_center[0] = Vector3d(-2, 0, -1.2 + box_length / 2.0);
+    double in_x, in_y, in_z;
+    n.getParam("in_x", in_x);
+    n.getParam("in_y", in_y);
+    n.getParam("in_z", in_z);
+    Cube_center[0] = Vector3d(in_x, in_y, in_z + box_length / 2.0);
+    // Cube_center[0] = Vector3d(-2, 0, -1.2 + box_length / 2.0);
     //Cube_center[0] = Vector3d(0, 3, -1.2 + box_length / 2.0);
     Cube_center[1] = Vector3d(4, -2, -1.2 + box_length / 2.0);
     Cube_center[2] = Vector3d(0, -2, -1.2 + box_length / 2.0);
