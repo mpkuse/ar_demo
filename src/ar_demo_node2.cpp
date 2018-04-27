@@ -49,7 +49,7 @@ int img_cnt = 0;
 
 image_transport::Publisher pub_ARimage;
 
-MeshObject m1;
+// MeshObject m1;
 SceneRenderer renderer;
 
 
@@ -86,6 +86,22 @@ void matrix4d_2_rosmsg( const Matrix4d& frame_pose, geometry_msgs::Pose& pose )
   pose.orientation.y = qua.y();
   pose.orientation.z = qua.z();
 
+}
+
+
+template<typename Out>
+void split(const std::string &s, char delim, Out result) {
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        *(result++) = item;
+    }
+}
+
+std::vector<std::string> split(const std::string &s, char delim) {
+    std::vector<std::string> elems;
+    split(s, delim, std::back_inserter(elems));
+    return elems;
 }
 /////////////////////////////END UTILS //////////////////////////////////
 
@@ -264,28 +280,95 @@ void mesh_pose_callback( const geometry_msgs::PoseStamped& msg )
 
 
 
+/* Sample usage with roslaunch
+<node pkg="ar_demo" type="ar_demo_node2" name="ar_demo_node" output="screen">
+  <remap from="~image_raw" to="/pg_17302081/image" doc="input image"/>
+  <remap from="~camera_path" to="/pose_graph/pose_graph_camera_path"/>
+  <remap from="~object_mesh_pose" to="/interactive_marker_server/object_mesh_pose"/>
 
+  <param name="calib_file" type="string" value="$(arg config_path)"/>
+
+  <param name="obj_list" type="string" value="cube.obj;chair.obj"/>
+  <param name="mesh_scaling_list" type="string" value=".5;.1"/>
+  <param name="mesh_initial_positions_list" type="string" value="-1,2,3;-1,3,1" />
+
+
+</node>
+*/
 int main( int argc, char ** argv )
 {
+  ////////////////////////////////////////////
+  // ROS INIT
+  ///////////////////////////////////////////
   ros::init(argc, argv, "ar_demo_2");
   ros::NodeHandle n("~");
 
   ROS_INFO( "Started Node (ar_demo_2)");
 
 
+  ///////////////////////////////////////////
   // Set up renderer
+  ///////////////////////////////////////////
   //    a) Load Camera Params (from yaml file)
-  //    b) Load mesh(es)
+  //    b) Load mesh(es) (list of obj from roslaunch params)
 
   string calib_file;
-  calib_file = string("/home/mpkuse/catkin_ws/src/VINS_testbed/config/black_box4/blackbox4.yaml");
-  // n.getParam("calib_file", calib_file); //TODO
+  // calib_file = string("/home/mpkuse/catkin_ws/src/VINS_testbed/config/black_box4/blackbox4.yaml");
+  n.getParam("calib_file", calib_file); //TODO
   ROS_INFO("reading paramerter of camera %s", calib_file.c_str());
   PinholeCamera camera = PinholeCamera( calib_file );
 
 
   // Will read the mesh object (.obj) from this package's resources folder.
-  m1 = MeshObject( "cube.obj");
+
+
+  // Read all the mesh objects from ros params
+  string obj_list, mesh_scaling_list, mesh_initial_positions_list;
+  n.getParam("obj_list", obj_list);
+  vector<string> objs = split( obj_list, ';' );
+
+  // now attempt to reach scaling for each param
+  n.getParam("mesh_scaling_list", mesh_scaling_list);
+  vector<string> mesh_scaling_ = split( mesh_scaling_list, ';' );
+
+  n.getParam("mesh_initial_positions_list", mesh_initial_positions_list); // this is like "1,2,3;5,1,2"
+  vector<string> mesh_initial_positions_ = split( mesh_initial_positions_list, ';' );
+
+
+  cout << "# of meshes               : " << objs.size() << endl;
+  cout << "# of mesh_scaling_list    : " << mesh_scaling_.size() << endl;
+  cout << "# of init positions       : " << mesh_initial_positions_.size() << endl;
+
+  // Ensure number of obj specified is equal to number of mesh and controls scaling values
+  // if( (objs.size() == mesh_scaling_.size()) && (objs.size() == controls_scaling_.size()) && (mesh_scaling_.size()==controls_scaling_.size())  )
+  if( (objs.size()==mesh_scaling_.size())  &&
+      (objs.size()==mesh_initial_positions_.size())  )
+  {
+    // OK!
+    ;
+  }
+  else
+  {
+    ROS_ERROR( "Number of of meshes specified not equal to scaling parameters. Quit!");
+    return 0;
+  }
+
+  cout << "----- All Objects ------\n";
+  for( int i=0 ; i<objs.size() ; i++ )
+  {
+    cout << i << "  mesh="<<objs[i] << "; ";
+    cout << "mesh_scaling="<< std::stod(mesh_scaling_[i]) << "; ";
+
+    vector<string> __t = split( mesh_initial_positions_[i], ',' );
+    cout << "mesh_initial_positions="<< std::stod(__t[0]) << "," << std::stod(__t[1]) << "," << std::stod(__t[2]) << "; ";
+    cout << endl;
+  }
+  cout << "------------------------\n";
+
+
+  /*
+  double obj_scaling = 0.5;
+  m1 = MeshObject( "cube.obj", obj_scaling );
     // Set a default object world pose
   Matrix4d init_w_T_obj;
   init_w_T_obj << 1.0, 0.0, 0.0, 8.0,
@@ -298,24 +381,44 @@ int main( int argc, char ** argv )
   renderer = SceneRenderer();
   renderer.setCamera( &camera );
   renderer.addMesh( &m1 );
+  */
+
+  renderer = SceneRenderer();
+  renderer.setCamera( &camera );
+
+  for( int i=0 ; i<objs.size() ; i++ ) // read all obj files
+  {
+    MeshObject *m1 = new MeshObject( objs[i], std::stod(mesh_scaling_[i]) );
+
+    vector<string> __t = split( mesh_initial_positions_[i], ',' );
+    Matrix4d init_w_T_obj;
+    init_w_T_obj << 1.0, 0.0, 0.0, std::stod(__t[0]),
+                    0.0, 1.0, 0.0, std::stod(__t[1]),
+                    0.0, 0.0, 1.0, std::stod(__t[2]),
+                    0.0, 0.0, 0.0, 1.0;
+    m1->setObjectWorldPose(init_w_T_obj);
+    renderer.addMesh( m1 );
+  }
 
 
-
-  // Subscribers
+  ////////////////////////////////////
+  //     Subscribers
+  ////////////////////////////////////
   //   a) Camera Path (from pose graph optimization node)
   //   b) Raw Images
   //   c) Updates to pose (optional.)
-  ROS_INFO( "Subscribe to Camera Path: ~image_raw" );
+  ROS_INFO( "Subscribe to Camera Path: ~camera_path" );
   ros::Subscriber path_of_img = n.subscribe("camera_path", 100, path_callback);
 
   ROS_INFO( "Subscribe to Raw Image: ~image_raw" );
   ros::Subscriber sub_img = n.subscribe("image_raw", 100, img_callback);
 
-  // ROS_INFO( "Subscribe to Interactive Marker Pose (updates): ~s" )
-  ros::Subscriber sub_mesh_pose = n.subscribe( "/object_mesh_pose", 1000, mesh_pose_callback );
+  ROS_INFO( "Subscribe to Interactive Marker Pose (updates): ~object_mesh_pose" );
+  ros::Subscriber sub_mesh_pose = n.subscribe( "object_mesh_pose", 1000, mesh_pose_callback );
 
-
+  /////////////////////////////////////
   // Publishers
+  /////////////////////////////////////
   //   a) Augmented Image (Raw Image + object overlayed on it)
   image_transport::ImageTransport it(n);
   pub_ARimage = it.advertise("AR_image", 1000);

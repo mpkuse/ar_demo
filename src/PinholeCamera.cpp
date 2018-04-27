@@ -29,6 +29,8 @@ PinholeCamera::PinholeCamera( string config_file )
   cout << "Scaling camera intrinsics to adjust for image resizing\n";
   double x_scale = config_image_width / 320.0; //3.0
   double y_scale = config_image_height / 240.0; //2.5
+  x_scale=1.0;
+  y_scale=1.0;
   _fx /= x_scale;
   _cx /= x_scale;
   _fy /= y_scale;

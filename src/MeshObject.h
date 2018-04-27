@@ -56,7 +56,7 @@ class MeshObject
 {
 public:
   MeshObject();
-  MeshObject( string obj_name );
+  MeshObject( string obj_name, double scaling );
 
   const string& getMeshObjectName() { return this->obj_name; }
 
@@ -88,7 +88,7 @@ private:
 
 
 
-  bool load_obj( string fname );
+  bool load_obj( string fname, double scaling );
   vector<Vector3d> vertices;
   MatrixXd o_X; //vertices in object frame-of-ref
   vector<Vector3i> faces;

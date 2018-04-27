@@ -7,8 +7,10 @@ MeshObject::MeshObject()
   obj_name = string( "N/A" );
 }
 
-MeshObject::MeshObject(const string obj_name )
+MeshObject::MeshObject(const string obj_name, double scaling )
 {
+  // when the vertices are read, a scaling is applied on the co-ordinates
+
   cout << "Constructor MeshObject\n";
   m_loaded = false;
   m_world_pose_available = false;
@@ -21,7 +23,7 @@ MeshObject::MeshObject(const string obj_name )
   cout << "Open File     : " << obj_file_nme << endl;
 
   // Loading mesh here
-  load_obj( obj_file_nme );
+  load_obj( obj_file_nme , scaling);
 
 
   m_world_pose_available = false;
@@ -32,7 +34,7 @@ MeshObject::MeshObject(const string obj_name )
 
 void MeshObject::setObjectWorldPose( Matrix4d w_T_ob )
 {
-  cout << "[MeshObject::setObjectWorldPose]w_T_ob\n" << w_T_ob << endl;
+  cout << "[MeshObject::setObjectWorldPose::" << obj_name << "]w_T_ob\n" << w_T_ob << endl;
   this->w_T_ob = Matrix4d( w_T_ob );
   m_world_pose_available = true;
 }
@@ -45,7 +47,7 @@ bool MeshObject::getObjectWorldPose( Matrix4d& w_T_ob )
 }
 
 
-bool MeshObject::load_obj( string fname )
+bool MeshObject::load_obj( string fname, double scaling )
 {
 
   cout << "MeshObject::load_obj()\n";
@@ -96,7 +98,7 @@ bool MeshObject::load_obj( string fname )
   o_X = MatrixXd( 4, nvertex );
   for( int i=0 ; i<nvertex ; i++ )
   {
-    o_X.col(i) << vertices[i], 1.0 ;
+    o_X.col(i) << scaling * vertices[i], 1.0 ;
   }
 
   eigen_faces = MatrixXi( 3, nfaces );

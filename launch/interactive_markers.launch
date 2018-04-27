@@ -1,0 +1,26 @@
+<launch>
+  <arg name="ar_obj_list" default="cube.obj" />
+  <arg name="ar_mesh_scaling_list" default=".5" />
+  <arg name="ar_controls_scaling_list" default="1.5" />
+  <arg name="ar_mesh_initial_positions_list" default="-8,-1,-0.5" />
+
+  <node pkg="ar_demo" type="ar_demo_node2" name="ar_demo_node" output="screen">
+    <remap from="~image_raw" to="/pg_17302081/image" doc="input image"/>
+    <remap from="~camera_path" to="/pose_graph/pose_graph_camera_path"/>
+    <remap from="~object_mesh_pose" to="/interactive_marker_server/object_mesh_pose"/>
+
+    <param name="calib_file" type="string" value="$(arg config_path)"/>
+
+    <param name="obj_list" type="string" value="$(arg ar_obj_list)"/>
+    <param name="mesh_scaling_list" type="string" value="$(arg ar_mesh_scaling_list)"/>
+    <param name="mesh_initial_positions_list" type="string" value="$(arg ar_mesh_initial_positions_list)" />
+
+</node>
+
+<node pkg="ar_demo" type="interactive_marker_server" name="interactive_marker_server" output="log" >
+    <param name="obj_list" type="string" value="$(arg ar_obj_list)"/>
+    <param name="mesh_scaling_list" type="string" value="$(arg ar_mesh_scaling_list)"/>
+    <param name="controls_scaling_list" type="string" value="$(arg ar_controls_scaling_list)"/>
+    <param name="mesh_initial_positions_list" type="string" value="$(arg ar_mesh_initial_positions_list)" />
+</node>
+</launch>

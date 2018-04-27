@@ -160,8 +160,8 @@ void SceneRenderer::renderIn( const cv::Mat& canvas, const Matrix4d& w_T_c, cv::
     // View Frustrum Clipping
     vector<bool> cliped_keep;
     double near_clip = 0.001;
-    double top_clip  = 3.;
-    double right_clip = 3.;
+    double top_clip  = 5.;
+    double right_clip = 5.;
     for( int i=0 ; i<c_V.cols() ; i++ )
     {
       bool stati = true;
@@ -185,9 +185,9 @@ void SceneRenderer::renderIn( const cv::Mat& canvas, const Matrix4d& w_T_c, cv::
 
     // plot these points on canvas
     int u_ob_i = ob_i * 15705 + 25740;
-    uchar _blue = u_ob_i & 255;
-    uchar _green = (u_ob_i>>8) & 255;
-    uchar _red = (u_ob_i>>16) & 255;
+    uchar _blue = 0;u_ob_i & 255;
+    uchar _green = 0;(u_ob_i>>8) & 255;
+    uchar _red = 255;(u_ob_i>>16) & 255;
 
     cv::Scalar color = cv::Scalar(_blue,_green,_red);
     // Plot points
@@ -218,9 +218,9 @@ void SceneRenderer::renderIn( const cv::Mat& canvas, const Matrix4d& w_T_c, cv::
         continue;
 
 
-      cv::line( buf, p1, p2, color, 1, 8 );
-      cv::line( buf, p1, p3, color, 1, 8 );
-      cv::line( buf, p3, p2, color, 1, 8 );
+      cv::line( buf, p1, p2, color, 2, cv::LINE_AA );
+      cv::line( buf, p1, p3, color, 2, cv::LINE_AA );
+      cv::line( buf, p3, p2, color, 2, cv::LINE_AA );
     }
   }
 
