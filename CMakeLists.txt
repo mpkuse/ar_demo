@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   message_filters
   camera_model
+  interactive_markers
 )
 find_package(OpenCV REQUIRED)
 
@@ -36,8 +37,25 @@ include_directories(
 
 add_executable(ar_demo_node src/ar_demo_node.cpp)
 
+# Interactive Markers
+add_executable(interactive_marker_server src/interactive_marker_server.cpp)
+add_executable(ar_demo_node2
+                  src/ar_demo_node2.cpp
+                  src/PinholeCamera.cpp
+                  src/MeshObject.cpp
+                  src/SceneRenderer.cpp
+              )
+
+
  target_link_libraries(ar_demo_node
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
 
+ # Interactive Markers
+ target_link_libraries(interactive_marker_server
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
+ )
 
+ target_link_libraries(ar_demo_node2
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
+ )

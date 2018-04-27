@@ -59,6 +59,12 @@ std_msgs::ColorRGBA line_color_r;
 std_msgs::ColorRGBA line_color_g;
 std_msgs::ColorRGBA line_color_b;
 
+
+void estimated_ground_plane_callback( const visualization_msgs::Marker::ConstPtr& msg )
+{
+  ROS_INFO( "Received plane msg: (not used yet)");
+}
+
 void axis_generate(visualization_msgs::Marker &line_list, Vector3d &origin, int id)
 {
 
@@ -568,6 +574,8 @@ int main( int argc, char** argv )
     // ros::Subscriber sub_point = n.subscribe("pointcloud", 2000, point_callback);
     image_transport::ImageTransport it(n);
     pub_ARimage = it.advertise("AR_image", 1000);
+
+    ros::Subscriber sub_estimated_plane_info = n.subscribe( "/plane_detect_node/plane_marker", 1000, estimated_ground_plane_callback );
 
     line_color_r.r = 1.0;
     line_color_r.a = 1.0;
