@@ -110,11 +110,13 @@ std::vector<std::string> split(const std::string &s, char delim) {
 ///////////////////////////////////////////////////////////
 //////////////// Synced Callback //////////////////////////
 // In this callback, the image and pose correspond
+ros::Time _zero_;
+bool is_zero_time_set = false;
 void callback(const sensor_msgs::ImageConstPtr& img_msg, const nav_msgs::Odometry::ConstPtr pose_msg)
 {
 
   // ROS_INFO("sync callback!");
-  // cout << "sync callback: " << img_msg->header.stamp << ":" << pose_msg->header.stamp << endl;
+  cout << "sync callback: img=" << img_msg->header.stamp-_zero_ << "\t pose=" << pose_msg->header.stamp- _zero_ << endl;
   //throw the first few unstable pose
   if(img_cnt < 50)
   {
@@ -166,7 +168,12 @@ void callback(const sensor_msgs::ImageConstPtr& img_msg, const nav_msgs::Odometr
 //////////////// Basic Callbacks //////////////////////////
 void img_callback(const sensor_msgs::ImageConstPtr& img_msg)
 {
-  // ROS_INFO_STREAM( "img_callback" << img_msg->header.stamp );
+    if( is_zero_time_set == false ) {
+        _zero_ = img_msg->header.stamp;
+        is_zero_time_set = true;
+    }
+
+  // ROS_INFO_STREAM( "img_callback " << img_msg->header.stamp - _zero_ );
     if(pose_init)
     {
         img_buf.push(img_msg);
@@ -177,7 +184,7 @@ void img_callback(const sensor_msgs::ImageConstPtr& img_msg)
 
 void pose_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
 {
-    // ROS_INFO_STREAM( "pose_callback" << pose_msg->header.stamp );
+    // ROS_INFO_STREAM( "pose_callback " << pose_msg->header.stamp-_zero_ );
     if(!pose_init)
     {
         pose_init = true;
@@ -207,7 +214,7 @@ void pose_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
 // added by mpkuse
 void path_callback( const nav_msgs::Path::ConstPtr& path_msg )
 {
-  // ROS_INFO_STREAM( "Received path msg: " <<  path_msg->header.stamp );
+  // ROS_INFO_STREAM( "Received path msg: " <<  path_msg->header.stamp - _zero_ );
   // Get the latest pose.
   int len = path_msg->poses.size() ;
   if( len < 1 )
