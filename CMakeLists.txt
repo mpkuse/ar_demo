@@ -45,6 +45,16 @@ add_executable(ar_demo_node2
                   src/MeshObject.cpp
                   src/SceneRenderer.cpp
               )
+add_executable(ar_demo_node3
+                src/ar_demo_node3.cpp
+                src/PinholeCamera.cpp #TODO: Remove, this, instead add camodocal
+                src/MeshObject.cpp
+                src/SceneRenderer.cpp
+                src/ARDataManager.cpp
+                src/ARDataNode.cpp
+                src/utils/PoseManipUtils.cpp
+                src/utils/RosMarkerUtils.cpp
+            )
 
 
  target_link_libraries(ar_demo_node
@@ -57,5 +67,9 @@ add_executable(ar_demo_node2
  )
 
  target_link_libraries(ar_demo_node2
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
+ )
+
+ target_link_libraries(ar_demo_node3
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )

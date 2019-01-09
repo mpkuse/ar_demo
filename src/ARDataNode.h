@@ -1,0 +1,78 @@
+#pragma once
+/** Holds the data of pose and image for AR purpose
+        Author  : Manohar Kuse <mpkuse@connect.ust.hk>
+        Created : 8th Jan, 2019
+*/
+
+// STD headers
+#include <vector>
+#include <queue>
+#include <map>
+#include <mutex>
+#include <atomic>
+
+// OpenCV
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Geometry>
+
+// Ros
+#include <ros/ros.h>
+#include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/image_encodings.h>
+#include <cv_bridge/cv_bridge.h>
+#include <image_transport/image_transport.h>
+
+// Eigen
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Geometry>
+
+
+// My Utility Headers
+#include "utils/TermColor.h"
+#include "utils/ElapsedTime.h"
+#include "utils/PoseManipUtils.h"
+
+using namespace Eigen;
+
+class ARDataNode
+{
+public:
+    ARDataNode();
+    ~ARDataNode();
+
+    bool isPoseAvailable() const {return is_pose_available; }
+    const ros::Time getPoseTimestamp() const { return timestamp_pose; }
+    const Matrix4d& getPose() const;
+
+    bool isImageAvailable() const {return is_image_available; }
+    const ros::Time getImageTimestamp() const { return timestamp_image; }
+    const cv::Mat& getImage() const;
+
+    bool isIMUPoseAvailable() const {return is_imupose_available; }
+    const ros::Time getIMUPoseTimestamp() const { return timestamp_imupose; }
+    const Matrix4d& getIMUPose() const;
+
+    void setImageFromMsg( const sensor_msgs::ImageConstPtr msg );
+    void setPoseFromMsg(  const nav_msgs::Odometry::ConstPtr msg );
+    void setIMUPoseFromMsg(  const nav_msgs::Odometry::ConstPtr msg );
+
+private:
+    mutable std::mutex vars_mutex;
+
+    ros::Time timestamp_pose;
+    Matrix4d w_T_c;
+    std::atomic<bool> is_pose_available;
+
+    ros::Time timestamp_image;
+    cv::Mat image;
+    std::atomic<bool> is_image_available;
+
+    ros::Time timestamp_imupose;
+    Matrix4d w_T_imu;
+    std::atomic<bool> is_imupose_available;
+};

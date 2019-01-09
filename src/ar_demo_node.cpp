@@ -527,8 +527,18 @@ void path_callback( const nav_msgs::Path::ConstPtr& path_msg )
 
 int main( int argc, char** argv )
 {
+    string IMAGE_RAW_TOPIC = "/mynteye/left/image_raw";//"image_raw";
+    string ODOM_TOPIC_NAME = "/vins_estimator/camera_pose";
+    // string ODOM_TOPIC_NAME = "/keyframe_pose_graph_slam_noe/opt_odometry";
+    string OUT_AR_IMAGE_TOPIC = "AR_image";
+
+    // $ rosrun ar_demo ar_demo_node _calib_file:=/app/catkin_ws/src/cerebro/config/mynteye_kannala_brandt/mynteye_config.yaml
+
+
+
     ros::init(argc, argv, "points_and_lines");
     ros::NodeHandle n("~");
+    ROS_INFO( "Publisher : visualization_msgs::MarkerArray \"AR_object\" " );
     object_pub = n.advertise<visualization_msgs::MarkerArray>("AR_object", 10);
     n.getParam("box_length", box_length);
     ROS_INFO_STREAM( "Box Length (in meters): "<< box_length);
@@ -541,6 +551,7 @@ int main( int argc, char** argv )
         ROW = 600;
         COL = 480;
         FOCAL_LENGTH = 320.0;
+        ROS_INFO( "Subscribed to : \"image_undistored\" ");
         sub_img = n.subscribe("image_undistored", 100, img_callback);
     }
     else
@@ -548,7 +559,8 @@ int main( int argc, char** argv )
         ROW = 752;
         COL = 480;
         FOCAL_LENGTH = 460.0;
-        sub_img = n.subscribe("image_raw", 100, img_callback);
+        ROS_INFO( "Subscribed to : \"%s\" ", IMAGE_RAW_TOPIC.c_str() );
+        sub_img = n.subscribe(IMAGE_RAW_TOPIC, 100, img_callback);
     }
 
     Axis[0] = Vector3d(0, 2, -1.2);
@@ -569,12 +581,17 @@ int main( int argc, char** argv )
     Cube_center[2] = Vector3d(0, -2, -1.2 + box_length / 2.0);
 
 
-    // ros::Subscriber pose_img = n.subscribe("camera_pose", 100, pose_callback);
-    ros::Subscriber path_img = n.subscribe("camera_path", 100, path_callback);
+    ROS_INFO( "Subscribed to : \"%s\" ", ODOM_TOPIC_NAME.c_str() );
+    ros::Subscriber pose_img = n.subscribe(ODOM_TOPIC_NAME, 100, pose_callback);
+
+    // ROS_INFO( "Subscribed to : \"camera_path\" ");
+    // ros::Subscriber path_img = n.subscribe("camera_path", 100, path_callback);
     // ros::Subscriber sub_point = n.subscribe("pointcloud", 2000, point_callback);
     image_transport::ImageTransport it(n);
-    pub_ARimage = it.advertise("AR_image", 1000);
+    ROS_INFO( "Publisher : \"%s\"", OUT_AR_IMAGE_TOPIC.c_str() );
+    pub_ARimage = it.advertise( OUT_AR_IMAGE_TOPIC, 1000);
 
+    ROS_INFO( "Subscribed to : \"/plane_detect_node/plane_marker\" ");
     ros::Subscriber sub_estimated_plane_info = n.subscribe( "/plane_detect_node/plane_marker", 1000, estimated_ground_plane_callback );
 
     line_color_r.r = 1.0;
@@ -589,6 +606,7 @@ int main( int argc, char** argv )
     n.getParam("calib_file", calib_file);
     ROS_INFO("reading paramerter of camera %s", calib_file.c_str());
     m_camera = CameraFactory::instance()->generateCameraFromYamlFile(calib_file);
+    std::cout << m_camera->parametersToString() << std::endl;
 
     ros::Rate r(100);
     ros::Duration(1).sleep();
