@@ -19,8 +19,9 @@ MeshObject::MeshObject(const string obj_name, double scaling )
   string path = ros::package::getPath("ar_demo") + "/resources/";
   string obj_file_nme = path + obj_name;
 
-  cout << "Resource Path : " << path << endl;
+  // cout << "Resource Path : " << path << endl;
   cout << "Open File     : " << obj_file_nme << endl;
+  cout << "Name          : " << obj_name; 
 
   // Loading mesh here
   load_obj( obj_file_nme , scaling);
@@ -108,6 +109,7 @@ bool MeshObject::load_obj( string fname, double scaling )
   }
 
   cout << "end MeshObject::load_obj()\n";
+  return true;
 
 }
 

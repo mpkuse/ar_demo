@@ -1,8 +1,8 @@
 <launch>
   <arg name="ar_obj_list" default="cube.obj" />
-  <arg name="ar_mesh_scaling_list" default=".5" />
+  <arg name="ar_mesh_scaling_list" default=".2" />
   <arg name="ar_controls_scaling_list" default="1.5" />
-  <arg name="ar_mesh_initial_positions_list" default="-8,-1,-0.5" />
+  <arg name="ar_mesh_initial_positions_list" default="0,0,-0.5" />
 
   <arg name="config_path" default="$(find cerebro)/config/mynteye_pinhole/mynteye_config.yaml" />
 

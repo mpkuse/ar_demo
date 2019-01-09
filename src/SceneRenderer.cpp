@@ -2,25 +2,33 @@
 
 SceneRenderer::SceneRenderer()
 {
-
 }
 
 
 void SceneRenderer::setCamera( PinholeCamera* cam )
 { this->cam = cam; }
 
-void SceneRenderer::addMesh( MeshObject* mesh )
+bool SceneRenderer::addMesh( MeshObject* mesh )
 {
-  this->objGraph.push_back( mesh );
+    std::lock_guard<std::mutex> lk(mesh_mutex);
+    // this->objGraph.push_back( mesh );
+    if( meshmap.count(mesh->getMeshObjectName()) == 0 ) {
+        meshmap[ mesh->getMeshObjectName() ] = mesh;
+        return true;
+    }
+    else {
+        cout << "[SceneRenderer::addMesh] You requyested to add a mesh which already exists. So not adding again\n";
+        return false;
+    }
 }
 
-
+/* //todo removal
 void SceneRenderer::render( const cv::Mat& canvas, const Matrix4d& w_T_c )
 {
   // MeshObject *m = objGraph[0];
   cv::Mat buf = canvas.clone();
 
-  for( int ob_i=0 ; ob_i < objGraph.size() ; ob_i++ )
+  for( int ob_i=0 ; ob_i <getMeshCount() ; ob_i++ )
   {
     MeshObject *m = objGraph[ob_i];
 
@@ -120,16 +128,21 @@ void SceneRenderer::render( const cv::Mat& canvas, const Matrix4d& w_T_c )
   cv::imshow( "buf", buf);
 
 }
-
+*/
 
 void SceneRenderer::renderIn( const cv::Mat& canvas, const Matrix4d& w_T_c, cv::Mat& buf )
 {
-  // MeshObject *m = objGraph[0];
-  buf = canvas.clone();
+    if( canvas.channels() == 3 )
+      buf = canvas.clone();
+    else
+        cv::cvtColor(canvas, buf, cv::COLOR_GRAY2BGR);
 
-  for( int ob_i=0 ; ob_i < objGraph.size() ; ob_i++ )
+
+  vector<string> mesh_keys;
+  getMeshList( mesh_keys );
+  for( int ob_i=0 ; ob_i < mesh_keys.size() ; ob_i++ )
   {
-    MeshObject *m = objGraph[ob_i];
+    MeshObject *m = meshmap[  mesh_keys[ob_i]  ];
 
     // Get Vertices
     // assert( m->isMeshLoaded() );
@@ -229,20 +242,59 @@ void SceneRenderer::renderIn( const cv::Mat& canvas, const Matrix4d& w_T_c, cv::
 }
 
 
-
-int SceneRenderer::getMeshCount()
+// TODO removal
+/*
+const int SceneRenderer::getMeshCount() const
 {
-  return objGraph.size();
+    std::lock_guard<std::mutex> lk(mesh_mutex);
+    return meshmap.size();
 }
 
-const string& SceneRenderer::getMeshName( int i )
+
+const string SceneRenderer::getMeshName( int i ) const
 {
-  assert( i>=0 && i<getMeshCount() );
-  return objGraph[i]->getMeshObjectName();
+    std::lock_guard<std::mutex> lk(mesh_mutex);
+    assert( i>=0 && i<getMeshCount() );
+    return objGraph[i]->getMeshObjectName();
 }
 
 MeshObject* SceneRenderer::getMeshObject( int i )
 {
-  assert( i>=0 && i<getMeshCount() );
-  return objGraph[i];
+    std::lock_guard<std::mutex> lk(mesh_mutex);
+    assert( i>=0 && i<getMeshCount() );
+    return objGraph[i];
+}
+
+MeshObject * SceneRenderer::getMeshObject( string obj_name )
+{
+    std::lock_guard<std::mutex> lk(mesh_mutex);
+    if( meshmap.count(obj_name) > 0 )
+        return meshmap[obj_name];
+    else
+        return NULL;
+}
+*/
+
+void SceneRenderer::getMeshList( vector<string>& mesh_keys )
+{
+    std::lock_guard<std::mutex> lk(mesh_mutex);
+    mesh_keys.clear();
+    for( auto it=meshmap.begin() ; it!=meshmap.end() ; it++ )
+        mesh_keys.push_back( it->first );
+}
+
+
+bool SceneRenderer::setWorldPoseOfMesh( string mesh_id, const Matrix4d& w_T_obj )
+{
+    std::lock_guard<std::mutex> lk(mesh_mutex);
+    if( meshmap.count(mesh_id) > 0 )
+    {
+        meshmap[mesh_id]->setObjectWorldPose( w_T_obj );
+        cout << "[SceneRenderer::setWorldPoseOfMesh] successfully set for mesh_id=" << mesh_id << " pose=" << PoseManipUtils::prettyprintMatrix4d( w_T_obj ) << endl;
+        return true;
+    }
+    else {
+        cout << TermColor::RED() << "[SceneRenderer::setWorldPoseOfMesh] cannot find mesh=" << mesh_id << "in my list of "<< meshmap.size() << " mesh objects\n" << TermColor::RESET() ;
+        return false;
+    }
 }

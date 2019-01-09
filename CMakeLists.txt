@@ -39,12 +39,12 @@ add_executable(ar_demo_node src/ar_demo_node.cpp)
 
 # Interactive Markers
 add_executable(interactive_marker_server src/interactive_marker_server.cpp)
-add_executable(ar_demo_node2
-                  src/ar_demo_node2.cpp
-                  src/PinholeCamera.cpp
-                  src/MeshObject.cpp
-                  src/SceneRenderer.cpp
-              )
+#add_executable(ar_demo_node2
+#                  src/ar_demo_node2.cpp
+#                  src/PinholeCamera.cpp
+#                  src/MeshObject.cpp
+#                  src/SceneRenderer.cpp
+#              )
 add_executable(ar_demo_node3
                 src/ar_demo_node3.cpp
                 src/PinholeCamera.cpp #TODO: Remove, this, instead add camodocal
@@ -66,9 +66,9 @@ add_executable(ar_demo_node3
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
 
- target_link_libraries(ar_demo_node2
-   ${catkin_LIBRARIES} ${OpenCV_LIBS}
- )
+ #target_link_libraries(ar_demo_node2
+ #  ${catkin_LIBRARIES} ${OpenCV_LIBS}
+ #)
 
  target_link_libraries(ar_demo_node3
    ${catkin_LIBRARIES} ${OpenCV_LIBS}

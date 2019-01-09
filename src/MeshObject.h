@@ -58,20 +58,20 @@ public:
   MeshObject();
   MeshObject( string obj_name, double scaling );
 
-  const string& getMeshObjectName() { return this->obj_name; }
+  const string getMeshObjectName() const { return this->obj_name; }
 
   void setObjectWorldPose( Matrix4d w_T_ob );
   bool getObjectWorldPose( Matrix4d& w_T_ob );
-  const Matrix4d& getObjectWorldPose() { return w_T_ob; }
+  const Matrix4d& getObjectWorldPose() const { return w_T_ob; }
 
-  bool isMeshLoaded( ) { return m_loaded; }
-  bool isWorldPoseAvailable() { return m_world_pose_available; }
+  bool isMeshLoaded( ) const { return m_loaded; }
+  bool isWorldPoseAvailable() const { return m_world_pose_available; }
 
   // Writes the pose to nap/resources/`obj_name`.worldpose
-  bool writeMeshWorldPose();
+  bool writeMeshWorldPose(); //TODO removal 
 
-  const MatrixXd& getVertices() { return  o_X; }
-  const MatrixXi& getFaces() { return  eigen_faces; }
+  const MatrixXd& getVertices() const { return  o_X; }
+  const MatrixXi& getFaces() const { return  eigen_faces; }
 
   // void write_debug_xml( const char * fname );
   // bool load_debug_xml( char * fname );

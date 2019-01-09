@@ -114,7 +114,7 @@ int main(int argc, char ** argv )
     }
 
     cout << "----- All Objects ------\n";
-    for( int i=0 ; i<objs.size() ; i++ )
+    for( int i=0 ; i<(int)objs.size() ; i++ )
     {
     cout << i << "  mesh="<<objs[i] << "; ";
     cout << "mesh_scaling="<< std::stod(mesh_scaling_[i]) << "; ";
@@ -131,10 +131,10 @@ int main(int argc, char ** argv )
     //////////////////////////////////////////////
     // Renderer
     //////////////////////////////////////////////
-    SceneRenderer renderer = SceneRenderer();
-    renderer.setCamera( camera );
+    SceneRenderer * renderer = new SceneRenderer();
+    renderer->setCamera( camera );
 
-    for( int i=0 ; i<objs.size() ; i++ ) // read all obj files
+    for( int i=0 ; i<(int)objs.size() ; i++ ) // read all obj files
     {
       MeshObject *m1 = new MeshObject( objs[i], std::stod(mesh_scaling_[i]) );
 
@@ -145,15 +145,16 @@ int main(int argc, char ** argv )
                       0.0, 0.0, 1.0, std::stod(__t[2]),
                       0.0, 0.0, 0.0, 1.0;
       m1->setObjectWorldPose(init_w_T_obj);
-      renderer.addMesh( m1 );
+      renderer->addMesh( m1 );
     }
 
-    return 0;
+
 
     ////////////////////////////////////////////
     // ARDataManager
     ///////////////////////////////////////////
     ARDataManager * manager = new ARDataManager();
+    manager->setRenderer(renderer);
 
     ////////////////////////////////////
     //     Subscribers
@@ -177,8 +178,9 @@ int main(int argc, char ** argv )
     ros::Subscriber sub_imuodometry_topic = n.subscribe(imupose_topic_name.c_str(), 100, &ARDataManager::imuodom_pose_callback, manager);
 
 
-    //   ROS_INFO( "Subscribe to Interactive Marker Pose (updates): ~object_mesh_pose" );
-    //   ros::Subscriber sub_mesh_pose = n.subscribe( "object_mesh_pose", 1000, mesh_pose_callback );
+    string marker_pose_topic_name = "/interactive_marker_server/object_mesh_pose";
+    ROS_INFO( "Subscribe to Interactive Marker Pose (updates): %s", marker_pose_topic_name.c_str() );
+    ros::Subscriber sub_mesh_pose = n.subscribe( marker_pose_topic_name, 1000, &ARDataManager::mesh_pose_callback, manager );
 
     /////////////////////////////////////
     // Publishers
@@ -196,7 +198,7 @@ int main(int argc, char ** argv )
 
     // this thread monitors the data_map periodically
     manager->run_thread_enable();
-    std::thread t1( &ARDataManager::run_thread, manager, 1 );
+    std::thread t1( &ARDataManager::run_thread, manager, 30 );
 
 
     ROS_INFO( "spin()");

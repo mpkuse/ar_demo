@@ -32,6 +32,7 @@
 #include "utils/ElapsedTime.h"
 
 #include "ARDataNode.h"
+#include "SceneRenderer.h"
 
 using namespace std;
 using namespace Eigen;
@@ -40,9 +41,10 @@ using namespace Eigen;
 class ARDataManager
 {
 public:
-    ARDataManager()
+    ARDataManager(  )
     {
         run_thread_flag = false;
+        monitor_thread_flag=false;
     }
 
     ~ARDataManager()
@@ -53,15 +55,27 @@ public:
         }
     }
 
+    void setRenderer( SceneRenderer* _renderer ) {
+        renderer = _renderer;
+    }
+
+
     // callbacks
     void raw_image_callback( const sensor_msgs::ImageConstPtr msg );
     void odom_pose_callback( const nav_msgs::Odometry::ConstPtr msg ); ///< w_T_c. pose of camera in the world-cordinate system. All the cameras. only a subset of this will be keyframes
     void imuodom_pose_callback( const nav_msgs::Odometry::ConstPtr msg ); //< w_T_imu. pose of the imu in world-cordinate. @200hz
+    void mesh_pose_callback( const geometry_msgs::PoseStamped::ConstPtr msg ); //< updates the pose of mesh(i) which are inside renderer.
+
 
     // thread -
     void run_thread_enable() { run_thread_flag=true; }
     void run_thread_disable() { run_thread_flag=false; }
     void run_thread( int hz);
+
+    // thread - monitor
+    void monitor_thread_enable() { monitor_thread_flag=true; }
+    void monitor_thread_disable() { monitor_thread_flag=false; }
+    void monitor_thread( int hz);
 
 
     // returns the latest node where camera pose (and image_raw) is available (ie. green)
@@ -78,5 +92,11 @@ private:
 
     // run thread
     atomic<bool> run_thread_flag;
+
+    // monitor thread
+    atomic<bool> monitor_thread_flag;
+
+    // renderer
+    SceneRenderer * renderer = NULL;
 
 };

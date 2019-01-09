@@ -116,15 +116,65 @@ void ARDataManager::imuodom_pose_callback( const nav_msgs::Odometry::ConstPtr ms
     node->setIMUPoseFromMsg( msg );
 }
 
-///////////////////////////////////////////////////////////////////////////////
 
-
-void ARDataManager::run_thread( int hz )
+/// This will update the mesh-pose upon receiving the message from `interactive_marker_server`
+void ARDataManager::mesh_pose_callback( const geometry_msgs::PoseStamped::ConstPtr msg )
 {
-    cout << TermColor::GREEN() << "starting thread `run_thread`. will have an inf-loop @" << hz << "\n" << TermColor::RESET() << endl;
+    // cout << TermColor::BLUE();
+    cout << "+        XXXXX mesh_pose_callback() for mesh "<< msg->header.frame_id << endl ;
+    cout << "NOT IMPLEMENTED\n";
 
+
+    string frame_id = msg->header.frame_id ;
+    if( frame_id == "control_marker" )
+    {
+        // cout << TermColor::RESET();
+        return;
+    }
+
+    // msg->pose --> pose_p, pose_q
+    Matrix4d w_T_ob;
+    PoseManipUtils::geometry_msgs_Pose_to_eigenmat( msg->pose, w_T_ob );
+    // cout << "Recvd Pose (w_T_{" << frame_id << "}):\n" << w_T_ob << endl;
+    cout << "Recvd Pose (w_T_{" << frame_id << "}):" << PoseManipUtils::prettyprintMatrix4d(w_T_ob) << endl;
+
+    renderer->setWorldPoseOfMesh( frame_id, w_T_ob );
+
+    #if 0
+    // search this mesh
+    cout << "search for mesh with frame_id=" << frame_id << ": getMeshCount=" << renderer->getMeshCount() << endl;
+    int n = renderer->getMeshCount();
+    // return ;
+    for( int i=0 ; i<n ; i++ )
+    {
+        cout << i << " renderer->getMeshName(i)=" << renderer->getMeshName(i) << endl;
+
+        if( frame_id ==  renderer->getMeshName(i) )
+        {
+            cout << "            Found :}" << "set w_T_obj=" ;
+            cout << "Found "<< frame_id << "; Setting w_T_obj" << endl;
+            // (renderer->getMeshObject(i))->setObjectWorldPose( w_T_ob );
+            // cout << TermColor::RESET();
+            return;
+        }
+        else {
+            cout << "not equal\n";
+        }
+
+    }
+    cout << "mesh not Found :{\n";
+    // cout << TermColor::RESET();
+    return;
+    #endif
+
+}
+
+///////////////////////////////////////////////////////////////////////////////
+void ARDataManager::monitor_thread( int hz)
+{
+    cout << TermColor::GREEN() << "starting thread `monitor_thread`. will have an inf-loop @" << hz << "\n" << TermColor::RESET() << endl;
     ros::Rate rate(hz);
-    while( run_thread_flag )
+    while( monitor_thread_flag )
     {
         {
             std::lock_guard<std::mutex> lk(data_map_mutex);
@@ -177,7 +227,48 @@ void ARDataManager::run_thread( int hz )
 
         rate.sleep();
     }
+    cout << TermColor::GREEN() << "finished thread `monitor_thread`\n" << TermColor::RESET() << endl;
+}
+
+
+void ARDataManager::run_thread( int hz )
+{
+    cout << TermColor::GREEN() << "starting thread `run_thread`. will have an inf-loop @" << hz << "\n" << TermColor::RESET() << endl;
+    ros::Rate rate(hz);
+
+    if( renderer == NULL ) {
+        cout << TermColor::RED() << "you need to set the renderer (with ARDataManager::setRenderer()) before you can run this thread\n" << TermColor::RESET();
+        run_thread_flag = false;
+    }
+
+    ros::Time prev_rendered_stamp;
+    while( run_thread_flag )
+    {
+        rate.sleep();
+        cout << "run thread\n";
+
+        const ARDataNode* node = latestNodeWherePoseisAvailable();
+        if( node == NULL ) {
+            cout << "node is NULL";
+            continue;
+        }
+
+        cout << "render pose.t="<< node->getPoseTimestamp() << "  image.t="<< node->getImageTimestamp() << endl;
+
+        if( prev_rendered_stamp >= node->getPoseTimestamp() ) {
+            cout << "this was already rendered before, so ignore it\n";
+            continue;
+        }
+
+        cv::Mat buffer;
+        renderer->renderIn( node->getImage(), node->getPose(), buffer );
+        cv::imshow( "buffer", buffer );
+        cv::waitKey(10);
+
+        prev_rendered_stamp = node->getImageTimestamp();
+    }
     cout << TermColor::GREEN() << "finished thread `run_thread`\n" << TermColor::RESET() << endl;
+
 }
 
 
