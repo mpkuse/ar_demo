@@ -156,7 +156,7 @@ void ARDataManager::mesh_pose_callback( const geometry_msgs::PoseStamped::ConstP
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void ARDataManager::monitor_thread( int hz)
+void ARDataManager::monitor_thread( int hz, bool printing )
 {
     cout << TermColor::GREEN() << "starting thread `monitor_thread`. will have an inf-loop @" << hz << "\n" << TermColor::RESET() << endl;
     ros::Rate rate(hz);
@@ -165,34 +165,37 @@ void ARDataManager::monitor_thread( int hz)
         {
             std::lock_guard<std::mutex> lk(data_map_mutex);
 
-            // cout << TermColor::BLUE() << "run_thread\n" << TermColor::RESET() << endl;
-            cout << "---monitor_thread, map_size: " << data_map.size();
-            if( data_map.size() > 0 ) {
-            cout << "  start.t=" << std::setprecision(20) << data_map.begin()->first << "  ";
-            cout << "end.t=" << std::setprecision(20) << data_map.rbegin()->first << "  ";
-            }
-            cout << endl;
+            if( printing )
+            {
+                // cout << TermColor::BLUE() << "run_thread\n" << TermColor::RESET() << endl;
+                cout << "---monitor_thread, map_size: " << data_map.size();
+                if( data_map.size() > 0 ) {
+                cout << "  start.t=" << std::setprecision(20) << data_map.begin()->first << "  ";
+                cout << "end.t=" << std::setprecision(20) << data_map.rbegin()->first << "  ";
+                }
+                cout << endl;
 
-            // color-coded show
-            for( auto it = data_map.begin(); it != data_map.end() ; it++ ) {
-                // auto node = it->second;
-                bool status1 = it->second->isImageAvailable();
-                bool status2 = it->second->isPoseAvailable();
-                bool status3 = it->second->isIMUPoseAvailable();
-                if( !status3 ) {
-                    if( status1&& status2 ) cout << TermColor::GREEN() << "|" << TermColor::RESET();
-                    if( status1&& !status2 ) cout << TermColor::YELLOW() << "|" << TermColor::RESET();
-                    if( !status1&& status2 ) cout << TermColor::BLUE() << "|" << TermColor::RESET();
-                    if( !status1&& !status2 ) cout << TermColor::RED() << "|" << TermColor::RESET();
+                // color-coded show
+                for( auto it = data_map.begin(); it != data_map.end() ; it++ ) {
+                    // auto node = it->second;
+                    bool status1 = it->second->isImageAvailable();
+                    bool status2 = it->second->isPoseAvailable();
+                    bool status3 = it->second->isIMUPoseAvailable();
+                    if( !status3 ) {
+                        if( status1&& status2 ) cout << TermColor::GREEN() << "|" << TermColor::RESET();
+                        if( status1&& !status2 ) cout << TermColor::YELLOW() << "|" << TermColor::RESET();
+                        if( !status1&& status2 ) cout << TermColor::BLUE() << "|" << TermColor::RESET();
+                        if( !status1&& !status2 ) cout << TermColor::RED() << "|" << TermColor::RESET();
+                    }
+                    else {
+                        if( status1&& status2 ) cout << TermColor::iGREEN() << "|" << TermColor::RESET();
+                        if( status1&& !status2 ) cout << TermColor::iYELLOW() << "|" << TermColor::RESET();
+                        if( !status1&& status2 ) cout << TermColor::iBLUE() << "|" << TermColor::RESET();
+                        if( !status1&& !status2 ) cout << TermColor::iRED() << "|" << TermColor::RESET();
+                    }
                 }
-                else {
-                    if( status1&& status2 ) cout << TermColor::iGREEN() << "|" << TermColor::RESET();
-                    if( status1&& !status2 ) cout << TermColor::iYELLOW() << "|" << TermColor::RESET();
-                    if( !status1&& status2 ) cout << TermColor::iBLUE() << "|" << TermColor::RESET();
-                    if( !status1&& !status2 ) cout << TermColor::iRED() << "|" << TermColor::RESET();
-                }
+                cout << endl;
             }
-            cout << endl;
 
 
             if( data_map.size() > 0 ) {
@@ -216,7 +219,8 @@ void ARDataManager::monitor_thread( int hz)
     cout << TermColor::GREEN() << "finished thread `monitor_thread`\n" << TermColor::RESET() << endl;
 }
 
-
+// #define __ARDataManager__run_thread( msg ) msg;
+#define __ARDataManager__run_thread( msg ) ;
 void ARDataManager::run_thread( int hz )
 {
     cout << TermColor::GREEN() << "starting thread `run_thread`. will have an inf-loop @" << hz << "\n" << TermColor::RESET() << endl;
@@ -236,26 +240,28 @@ void ARDataManager::run_thread( int hz )
     while( run_thread_flag )
     {
         rate.sleep();
-        // cout << "run thread\n";
+        __ARDataManager__run_thread( cout << "---run thread\n"; )
 
         const ARDataNode* node = latestNodeWherePoseisAvailable();
         const ARDataNode* nodeX = latestNodeWhereIMUPoseisAvailable();
         if( node == NULL || nodeX == NULL ) {
-            // cout << "node is NULL";
+            __ARDataManager__run_thread( cout << "node is NULL"; )
             continue;
         }
 
+        __ARDataManager__run_thread(
         cout << "render pose.t="<< node->getPoseTimestamp() << "  image.t="<< node->getImageTimestamp() << endl;
         cout << "renderX pose.t="<< nodeX->getIMUPoseTimestamp() << "  image.t="<< nodeX->getImageTimestamp() << endl;
+        )
 
         if( prev_rendered_stamp >= node->getPoseTimestamp() ) {
-            cout << "this was already rendered before, so ignore it\n";
+            __ARDataManager__run_thread( cout << "this was already rendered before, so ignore it\n"; )
             continue;
         }
 
 
-        #if 1
-            cout << "---monitor_thread, map_size: " << data_map.size();
+        #if 0
+            cout << "---run_thread, map_size: " << data_map.size();
             if( data_map.size() > 0 ) {
             cout << "  start.t=" << std::setprecision(20) << data_map.begin()->first << "  ";
             cout << "end.t=" << std::setprecision(20) << data_map.rbegin()->first << "  ";
@@ -294,11 +300,12 @@ void ARDataManager::run_thread( int hz )
 
         cv::Mat buffer;
         #if 1
-        //      ---simple render
+        //      ---simple render ..works!
         // render on last pose where camera pose was available.
         renderer->renderIn( node->getImage(), node->getPose(), buffer );
         prev_rendered_stamp = node->getImageTimestamp();
         #else
+        //--> this bit doesnt work..:/
         if( node->isIMUPoseAvailable() && nodeX->isIMUPoseAvailable() ) {
         // render with imu prop.
         // w_T_X <== w_T_r + ( r_T_X ). but r_T_X can currently only be computed with imu propagation

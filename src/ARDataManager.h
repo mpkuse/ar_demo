@@ -79,7 +79,7 @@ public:
     // thread - monitor
     void monitor_thread_enable() { monitor_thread_flag=true; }
     void monitor_thread_disable() { monitor_thread_flag=false; }
-    void monitor_thread( int hz);
+    void monitor_thread( int hz, bool printing);
 
 
     // returns the latest node where camera pose (and image_raw) is available (ie. green)

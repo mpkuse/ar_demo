@@ -25,6 +25,12 @@
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 
+// camodocal
+#include "camodocal/camera_models/Camera.h"
+#include "camodocal/camera_models/CameraFactory.h"
+#include "camodocal/camera_models/CataCamera.h"
+#include "camodocal/camera_models/EquidistantCamera.h"
+
 // My Headers
 // #include "PinholeCamera.h"
 #include "ARDataManager.h"
@@ -76,7 +82,16 @@ int main(int argc, char ** argv )
     // calib_file = string("/home/mpkuse/catkin_ws/src/VINS_testbed/config/black_box4/blackbox4.yaml");
     n.getParam("calib_file", calib_file); //TODO
     ROS_INFO("reading paramerter of camera %s", calib_file.c_str());
-    PinholeCamera * camera = new PinholeCamera( calib_file );
+    camodocal::CameraPtr m_camera;
+    m_camera = camodocal::CameraFactory::instance()->generateCameraFromYamlFile(calib_file);
+    if( !m_camera ) {
+        cout << TermColor::RED() << "[ar_demo_node3]camodocal cannot load calib file...quitting" << TermColor::RED() << endl;;
+        ROS_ERROR( "[ar_demo_node3]camodocal cannot load calib file...quitting");
+        exit(1);
+    }
+    // Inbuild function for priniting
+    std::cout << m_camera->parametersToString() << std::endl;
+
 
 
     // Will read the mesh object (.obj) from this package's resources folder.
@@ -132,7 +147,7 @@ int main(int argc, char ** argv )
     // Renderer
     //////////////////////////////////////////////
     SceneRenderer * renderer = new SceneRenderer();
-    renderer->setCamera( camera );
+    renderer->setCamera( m_camera );
 
     for( int i=0 ; i<(int)objs.size() ; i++ ) // read all obj files
     {
@@ -188,6 +203,7 @@ int main(int argc, char ** argv )
     //   a) Augmented Image (Raw Image + object overlayed on it)
     image_transport::ImageTransport it(n);
     string ar_image_topic = "AR_image";
+    ROS_INFO( "Publish ar_image_topic : %s", ar_image_topic.c_str() );
     image_transport::Publisher pub_ARimage = it.advertise(ar_image_topic, 100);
     manager->setARImagePublisher( pub_ARimage );
 
@@ -196,16 +212,23 @@ int main(int argc, char ** argv )
     // Threads
     //////////////////////////////////
 
+    // this thread monitors data_map and removes old items, and optionally prints status
+    manager->monitor_thread_enable();
+    std::thread t_monitor( &ARDataManager::monitor_thread, manager, 1 , false);
+
     // this thread monitors the data_map periodically and renders if it sees something new
     manager->run_thread_enable();
-    std::thread t1( &ARDataManager::run_thread, manager, 30 );
+    std::thread t_render( &ARDataManager::run_thread, manager, 30 );
 
 
     ROS_INFO( "spin()");
     ros::spin();
 
     manager->run_thread_disable();
-    t1.join();
+    manager->monitor_thread_disable();
+
+    t_render.join();
+    t_monitor.join();
 
     // manager->~ARDataManager();
 

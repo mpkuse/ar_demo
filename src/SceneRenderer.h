@@ -31,6 +31,11 @@
 
 
 
+// camodocal
+#include "camodocal/camera_models/Camera.h"
+#include "camodocal/camera_models/CameraFactory.h"
+#include "camodocal/camera_models/CataCamera.h"
+#include "camodocal/camera_models/EquidistantCamera.h"
 
 
 #include <Eigen/Dense>
@@ -42,7 +47,7 @@ using namespace Eigen;
 using namespace std;
 
 #include "MeshObject.h"
-#include "PinholeCamera.h"
+// #include "PinholeCamera.h"
 
 #include "utils/PoseManipUtils.h"
 #include "utils/TermColor.h"
@@ -52,7 +57,8 @@ class SceneRenderer
 public:
     SceneRenderer();
 
-    void setCamera(  PinholeCamera* cam );
+    // void setCamera(  PinholeCamera* cam );
+    void setCamera(  camodocal::CameraPtr cam );
     bool addMesh(  MeshObject* mesh );
 
 
@@ -66,9 +72,12 @@ public:
 
 private:
     mutable std::mutex mesh_mutex;
-    // vector<MeshObject*> objGraph;
     std::map<string, MeshObject*> meshmap;
-    PinholeCamera * cam;
 
+    bool isCamSet = false;
+    camodocal::CameraPtr m_camera;
+
+    // given 3d points to spaceToPlane() of camodocal's abstract camera.
+    void perspectiveProject3DPoints( const MatrixXd& c_V, MatrixXd& c_v );
 
 };
