@@ -242,38 +242,6 @@ void SceneRenderer::renderIn( const cv::Mat& canvas, const Matrix4d& w_T_c, cv::
 }
 
 
-// TODO removal
-/*
-const int SceneRenderer::getMeshCount() const
-{
-    std::lock_guard<std::mutex> lk(mesh_mutex);
-    return meshmap.size();
-}
-
-
-const string SceneRenderer::getMeshName( int i ) const
-{
-    std::lock_guard<std::mutex> lk(mesh_mutex);
-    assert( i>=0 && i<getMeshCount() );
-    return objGraph[i]->getMeshObjectName();
-}
-
-MeshObject* SceneRenderer::getMeshObject( int i )
-{
-    std::lock_guard<std::mutex> lk(mesh_mutex);
-    assert( i>=0 && i<getMeshCount() );
-    return objGraph[i];
-}
-
-MeshObject * SceneRenderer::getMeshObject( string obj_name )
-{
-    std::lock_guard<std::mutex> lk(mesh_mutex);
-    if( meshmap.count(obj_name) > 0 )
-        return meshmap[obj_name];
-    else
-        return NULL;
-}
-*/
 
 void SceneRenderer::getMeshList( vector<string>& mesh_keys )
 {
@@ -290,7 +258,7 @@ bool SceneRenderer::setWorldPoseOfMesh( string mesh_id, const Matrix4d& w_T_obj 
     if( meshmap.count(mesh_id) > 0 )
     {
         meshmap[mesh_id]->setObjectWorldPose( w_T_obj );
-        cout << "[SceneRenderer::setWorldPoseOfMesh] successfully set for mesh_id=" << mesh_id << " pose=" << PoseManipUtils::prettyprintMatrix4d( w_T_obj ) << endl;
+        // cout << "[SceneRenderer::setWorldPoseOfMesh] successfully set for mesh_id=" << mesh_id << " pose=" << PoseManipUtils::prettyprintMatrix4d( w_T_obj ) << endl;
         return true;
     }
     else {

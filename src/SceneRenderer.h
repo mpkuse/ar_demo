@@ -55,15 +55,10 @@ public:
     void setCamera(  PinholeCamera* cam );
     bool addMesh(  MeshObject* mesh );
 
-    // TODO removal 
-    // const int getMeshCount() const ;
-    // const string getMeshName( int i ) const;
-    // MeshObject* getMeshObject( int i );
 
     // void render( const cv::Mat& canvas, const Matrix4d& w_T_c );
     void renderIn( const cv::Mat& canvas, const Matrix4d& w_T_c, cv::Mat& buf );
 
-    // MeshObject * getMeshObject( string obj_name );
     void getMeshList( vector<string>& mesh_keys );
 
     bool setWorldPoseOfMesh( string mesh_id, const Matrix4d& w_T_obj );

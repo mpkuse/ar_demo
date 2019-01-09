@@ -1,11 +1,11 @@
 <launch>
-  <arg name="ar_obj_list" default="cube.obj" />
+  <arg name="ar_obj_list" default="chair.obj" />
   <arg name="ar_mesh_scaling_list" default=".2" />
   <arg name="ar_controls_scaling_list" default="1.5" />
   <arg name="ar_mesh_initial_positions_list" default="0,0,-0.5" />
 
   <arg name="config_path" default="$(find cerebro)/config/mynteye_pinhole/mynteye_config.yaml" />
-
+  <!-- <arg name="config_path" default="$(find cerebro)/config/mynteye_kannala_brandt/mynteye_config.yaml" /> -->
 
  <node pkg="ar_demo" type="ar_demo_node3" name="ar_demo_node3" output="screen">
     <!-- <remap from="~image_raw" to="/pg_17302081/image" doc="input image"/> -->

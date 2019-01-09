@@ -20,6 +20,11 @@ PinholeCamera::PinholeCamera( string config_file )
   fs["image_width"] >> config_image_width;   cout << "config_image_width:" << config_image_width << endl;
   fs["image_height"] >> config_image_height; cout << "config_image_height:" << config_image_height << endl;
 
+  if( config_model_type != string("PINHOLE") )
+  {
+      cout << "[PinholeCamera::PinholeCamera] I can only process PinholeCamera. this is a deprecated class. Use camodocal's abstract camera\n";
+      exit(10);
+  }
 
   fs["projection_parameters"]["fx"] >> _fx;
   fs["projection_parameters"]["fy"] >> _fy;

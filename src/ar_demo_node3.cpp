@@ -188,15 +188,15 @@ int main(int argc, char ** argv )
     //   a) Augmented Image (Raw Image + object overlayed on it)
     image_transport::ImageTransport it(n);
     string ar_image_topic = "AR_image";
-    auto pub_ARimage = it.advertise(ar_image_topic, 100);
-
+    image_transport::Publisher pub_ARimage = it.advertise(ar_image_topic, 100);
+    manager->setARImagePublisher( pub_ARimage );
 
 
     //////////////////////////////////
     // Threads
     //////////////////////////////////
 
-    // this thread monitors the data_map periodically
+    // this thread monitors the data_map periodically and renders if it sees something new
     manager->run_thread_enable();
     std::thread t1( &ARDataManager::run_thread, manager, 30 );
 

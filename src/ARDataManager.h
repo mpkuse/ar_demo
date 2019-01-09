@@ -58,6 +58,10 @@ public:
     void setRenderer( SceneRenderer* _renderer ) {
         renderer = _renderer;
     }
+    void setARImagePublisher( image_transport::Publisher _pub ) {
+        pub_ARimage = _pub;
+        isPubARImageset = true;
+    }
 
 
     // callbacks
@@ -98,5 +102,9 @@ private:
 
     // renderer
     SceneRenderer * renderer = NULL;
+
+    // image publisher
+    image_transport::Publisher pub_ARimage;
+    bool isPubARImageset = false;
 
 };

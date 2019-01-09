@@ -117,55 +117,41 @@ void ARDataManager::imuodom_pose_callback( const nav_msgs::Odometry::ConstPtr ms
 }
 
 
+
+#define __ARDataManager__meshposecallback( msg ) msg;
+// #define __ARDataManager__meshposecallback( msg ) ;
+
+
 /// This will update the mesh-pose upon receiving the message from `interactive_marker_server`
 void ARDataManager::mesh_pose_callback( const geometry_msgs::PoseStamped::ConstPtr msg )
 {
-    // cout << TermColor::BLUE();
+    __ARDataManager__meshposecallback(
+    cout << TermColor::BLUE();
     cout << "+        XXXXX mesh_pose_callback() for mesh "<< msg->header.frame_id << endl ;
-    cout << "NOT IMPLEMENTED\n";
+    )
 
 
     string frame_id = msg->header.frame_id ;
     if( frame_id == "control_marker" )
     {
-        // cout << TermColor::RESET();
+        __ARDataManager__meshposecallback( cout << TermColor::RESET(); )
         return;
     }
 
     // msg->pose --> pose_p, pose_q
     Matrix4d w_T_ob;
     PoseManipUtils::geometry_msgs_Pose_to_eigenmat( msg->pose, w_T_ob );
-    // cout << "Recvd Pose (w_T_{" << frame_id << "}):\n" << w_T_ob << endl;
+    __ARDataManager__meshposecallback(
     cout << "Recvd Pose (w_T_{" << frame_id << "}):" << PoseManipUtils::prettyprintMatrix4d(w_T_ob) << endl;
+    )
 
-    renderer->setWorldPoseOfMesh( frame_id, w_T_ob );
 
-    #if 0
-    // search this mesh
-    cout << "search for mesh with frame_id=" << frame_id << ": getMeshCount=" << renderer->getMeshCount() << endl;
-    int n = renderer->getMeshCount();
-    // return ;
-    for( int i=0 ; i<n ; i++ )
-    {
-        cout << i << " renderer->getMeshName(i)=" << renderer->getMeshName(i) << endl;
-
-        if( frame_id ==  renderer->getMeshName(i) )
-        {
-            cout << "            Found :}" << "set w_T_obj=" ;
-            cout << "Found "<< frame_id << "; Setting w_T_obj" << endl;
-            // (renderer->getMeshObject(i))->setObjectWorldPose( w_T_ob );
-            // cout << TermColor::RESET();
-            return;
-        }
-        else {
-            cout << "not equal\n";
-        }
-
+    bool status = renderer->setWorldPoseOfMesh( frame_id, w_T_ob );
+    if( status == false ) {
+        cout << TermColor::RED() << "[ARDataManager::mesh_pose_callback] received a pose for mesh which I do not recognize\n" << TermColor::RESET();
     }
-    cout << "mesh not Found :{\n";
-    // cout << TermColor::RESET();
-    return;
-    #endif
+
+    __ARDataManager__meshposecallback( cout << TermColor::RESET(); )
 
 }
 
@@ -180,7 +166,7 @@ void ARDataManager::monitor_thread( int hz)
             std::lock_guard<std::mutex> lk(data_map_mutex);
 
             // cout << TermColor::BLUE() << "run_thread\n" << TermColor::RESET() << endl;
-            cout << "---\nrun_thread, map_size: " << data_map.size();
+            cout << "---monitor_thread, map_size: " << data_map.size();
             if( data_map.size() > 0 ) {
             cout << "  start.t=" << std::setprecision(20) << data_map.begin()->first << "  ";
             cout << "end.t=" << std::setprecision(20) << data_map.rbegin()->first << "  ";
@@ -241,31 +227,105 @@ void ARDataManager::run_thread( int hz )
         run_thread_flag = false;
     }
 
+    if( isPubARImageset==false ) {
+        cout << TermColor::RED() << "you need to set AR image publisher before running this thread\n" << TermColor::RESET() ;
+        run_thread_flag = false;
+    }
+
     ros::Time prev_rendered_stamp;
     while( run_thread_flag )
     {
         rate.sleep();
-        cout << "run thread\n";
+        // cout << "run thread\n";
 
         const ARDataNode* node = latestNodeWherePoseisAvailable();
-        if( node == NULL ) {
-            cout << "node is NULL";
+        const ARDataNode* nodeX = latestNodeWhereIMUPoseisAvailable();
+        if( node == NULL || nodeX == NULL ) {
+            // cout << "node is NULL";
             continue;
         }
 
         cout << "render pose.t="<< node->getPoseTimestamp() << "  image.t="<< node->getImageTimestamp() << endl;
+        cout << "renderX pose.t="<< nodeX->getIMUPoseTimestamp() << "  image.t="<< nodeX->getImageTimestamp() << endl;
 
         if( prev_rendered_stamp >= node->getPoseTimestamp() ) {
             cout << "this was already rendered before, so ignore it\n";
             continue;
         }
 
+
+        #if 1
+            cout << "---monitor_thread, map_size: " << data_map.size();
+            if( data_map.size() > 0 ) {
+            cout << "  start.t=" << std::setprecision(20) << data_map.begin()->first << "  ";
+            cout << "end.t=" << std::setprecision(20) << data_map.rbegin()->first << "  ";
+            }
+            cout << endl;
+
+            // color-coded show
+            for( auto it = data_map.begin(); it != data_map.end() ; it++ ) {
+                // auto node = it->second;
+                bool status1 = it->second->isImageAvailable();
+                bool status2 = it->second->isPoseAvailable();
+                bool status3 = it->second->isIMUPoseAvailable();
+                string ch = "|";
+                if( it->second == node ) {
+                    ch = "r";
+                }
+                if( it->second == nodeX ) {
+                    ch = "X";
+                }
+                if( !status3 ) {
+                    if( status1&& status2 ) cout << TermColor::GREEN() << ch << TermColor::RESET();
+                    if( status1&& !status2 ) cout << TermColor::YELLOW() << ch << TermColor::RESET();
+                    if( !status1&& status2 ) cout << TermColor::BLUE() << ch << TermColor::RESET();
+                    if( !status1&& !status2 ) cout << TermColor::RED() << ch << TermColor::RESET();
+                }
+                else {
+                    if( status1&& status2 ) cout << TermColor::iGREEN() << ch << TermColor::RESET();
+                    if( status1&& !status2 ) cout << TermColor::iYELLOW() << ch << TermColor::RESET();
+                    if( !status1&& status2 ) cout << TermColor::iBLUE() << ch << TermColor::RESET();
+                    if( !status1&& !status2 ) cout << TermColor::iRED() << ch << TermColor::RESET();
+                }
+            }
+            cout << endl;
+        #endif
+
+
         cv::Mat buffer;
+        #if 1
+        //      ---simple render
+        // render on last pose where camera pose was available.
         renderer->renderIn( node->getImage(), node->getPose(), buffer );
+        prev_rendered_stamp = node->getImageTimestamp();
+        #else
+        if( node->isIMUPoseAvailable() && nodeX->isIMUPoseAvailable() ) {
+        // render with imu prop.
+        // w_T_X <== w_T_r + ( r_T_X ). but r_T_X can currently only be computed with imu propagation
+        Matrix4d w_T_X = node->getPose() * (  node->getIMUPose().inverse() * nodeX->getIMUPose()  );
+        renderer->renderIn( nodeX->getImage(), w_T_X, buffer );
+        prev_rendered_stamp = nodeX->getImageTimestamp();
+        }
+        else {
+            renderer->renderIn( node->getImage(), node->getPose(), buffer );
+            prev_rendered_stamp = node->getImageTimestamp();
+
+        }
+
+        #endif
+
+        #if 1
+        cv_bridge::CvImage cv_image;
+        cv_image.image = buffer;
+        cv_image.encoding = "bgr8";
+        sensor_msgs::Image ros_image_msg;
+        cv_image.toImageMsg(ros_image_msg);
+        pub_ARimage.publish( ros_image_msg );
+        #else
         cv::imshow( "buffer", buffer );
         cv::waitKey(10);
+        #endif
 
-        prev_rendered_stamp = node->getImageTimestamp();
     }
     cout << TermColor::GREEN() << "finished thread `run_thread`\n" << TermColor::RESET() << endl;
 
