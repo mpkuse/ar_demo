@@ -59,6 +59,11 @@ std::vector<std::string> split(const std::string &s, char delim) {
 }
 
 
+// Params:
+//      calib_file
+//      obj_list,mesh_scaling_list,mesh_initial_positions_list : mesh related
+//      odometry_topic_name : the poses.
+//      ar_image_topic : output image
 int main(int argc, char ** argv )
 {
     ////////////////////////////////////////////
@@ -177,17 +182,21 @@ int main(int argc, char ** argv )
     //   a) Camera Odometry and Corrected Odometry (from pose graph optimization node)
     //   b) Raw Images
     //   c) Updates to pose (optional.)
-    // string odometry_topic_name = "/vins_estimator/camera_pose"; //< this can also be the corrected pose.
-    string odometry_topic_name = "/keyframe_pose_graph_slam_node/opt_odometry"; //< this can also be the corrected pose.
+    string odometry_topic_name;
+    // odometry_topic_name = "/vins_estimator/camera_pose"; //< this can also be the corrected pose.
+    // odometry_topic_name = "/keyframe_pose_graph_slam_node/opt_odometry"; //< this can also be the corrected pose.
+    n.getParam("odometry_topic_name", odometry_topic_name);
     ROS_INFO( "Subscribe to odometry_topic_name: %s", odometry_topic_name.c_str() );
     ros::Subscriber sub_odometry_topic = n.subscribe(odometry_topic_name.c_str(), 100, &ARDataManager::odom_pose_callback, manager);
 
-
-    string raw_image_topic = "/mynteye/left/image_raw";
+    string raw_image_topic;
+    // raw_image_topic = "/mynteye/left/image_raw";
+    n.getParam("raw_image_topic", raw_image_topic);
     ROS_INFO( "Subscribe to Raw Image: %s", raw_image_topic.c_str() );
     ros::Subscriber sub_img = n.subscribe(raw_image_topic.c_str(), 100, &ARDataManager::raw_image_callback, manager );
 
 
+    // this is currently not in use, but be careful with this as it is at 200hz and its imu pose not the camera_pose.
     string imupose_topic_name = "/vins_estimator/imu_propagate"; //< this can also be the corrected pose.
     ROS_INFO( "Subscribe to imupose_topic_name: %s", imupose_topic_name.c_str() );
     ros::Subscriber sub_imuodometry_topic = n.subscribe(imupose_topic_name.c_str(), 100, &ARDataManager::imuodom_pose_callback, manager);
@@ -202,7 +211,9 @@ int main(int argc, char ** argv )
     /////////////////////////////////////
     //   a) Augmented Image (Raw Image + object overlayed on it)
     image_transport::ImageTransport it(n);
-    string ar_image_topic = "AR_image";
+    string ar_image_topic;
+    // ar_image_topic = "AR_image";
+    n.getParam( "ar_image_topic", ar_image_topic );
     ROS_INFO( "Publish ar_image_topic : %s", ar_image_topic.c_str() );
     image_transport::Publisher pub_ARimage = it.advertise(ar_image_topic, 100);
     manager->setARImagePublisher( pub_ARimage );

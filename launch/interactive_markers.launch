@@ -7,7 +7,7 @@
   <!-- <arg name="config_path" default="$(find cerebro)/config/mynteye_pinhole/mynteye_config.yaml" /> -->
   <arg name="config_path" default="$(find cerebro)/config/mynteye_kannala_brandt/mynteye_config.yaml" />
 
- <node pkg="ar_demo" type="ar_demo_node3" name="ar_demo_node3" output="screen">
+ <node pkg="ar_demo" type="ar_demo_node3" name="ar_demo_node3_odom" output="screen">
     <!-- <remap from="~image_raw" to="/pg_17302081/image" doc="input image"/> -->
     <!-- <remap from="~camera_path" to="/pose_graph/pose_graph_camera_path"/> -->
     <!-- <remap from="~object_mesh_pose" to="/interactive_marker_server/object_mesh_pose"/> -->
@@ -17,6 +17,29 @@
     <param name="obj_list" type="string" value="$(arg ar_obj_list)"/>
     <param name="mesh_scaling_list" type="string" value="$(arg ar_mesh_scaling_list)"/>
     <param name="mesh_initial_positions_list" type="string" value="$(arg ar_mesh_initial_positions_list)" />
+
+    <param name="raw_image_topic" type="string" value="/mynteye/left/image_raw"/>
+    <param name="odometry_topic_name" type="string" value="/vins_estimator/camera_pose"/>
+    <param name="ar_image_topic" type="string" value="AR_image_odom"/>
+
+</node>
+
+
+<node pkg="ar_demo" type="ar_demo_node3" name="ar_demo_node3_corrected" output="screen">
+   <!-- <remap from="~image_raw" to="/pg_17302081/image" doc="input image"/> -->
+   <!-- <remap from="~camera_path" to="/pose_graph/pose_graph_camera_path"/> -->
+   <!-- <remap from="~object_mesh_pose" to="/interactive_marker_server/object_mesh_pose"/> -->
+
+   <param name="calib_file" type="string" value="$(arg config_path)"/>
+
+   <param name="obj_list" type="string" value="$(arg ar_obj_list)"/>
+   <param name="mesh_scaling_list" type="string" value="$(arg ar_mesh_scaling_list)"/>
+   <param name="mesh_initial_positions_list" type="string" value="$(arg ar_mesh_initial_positions_list)" />
+
+   <param name="raw_image_topic" type="string" value="/mynteye/left/image_raw"/>
+   <param name="odometry_topic_name" type="string" value="/keyframe_pose_graph_slam_node/opt_odometry"/>
+   <param name="ar_image_topic" type="string" value="AR_image_corrected"/>
+
 </node>
 
 <node pkg="ar_demo" type="interactive_marker_server" name="interactive_marker_server" output="log" >
