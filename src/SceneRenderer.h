@@ -61,6 +61,23 @@ public:
     void setCamera(  camodocal::CameraPtr cam );
     bool addMesh(  MeshObject* mesh );
 
+    // std::shared_ptr<MeshObject> getMesh( string name )
+    MeshObject* getMesh( string name )
+    {
+        if( meshmap.count(name) == 0 ) {
+            cout << "[SceneRenderer::getMesh] you requested to get mesh with name=" << name << " such a mesh does not exist\n";
+            cout << "Following are available, n=" << meshmap.size() << ":\n";
+            for( auto it=meshmap.begin() ; it!=meshmap.end() ; it++ )
+            {
+                cout << it->first;
+            }
+            exit(2);
+        }
+
+        // return std::make_shared( meshmap.at( name ) );
+        return meshmap.at( name ) ;
+    }
+
 
     // void render( const cv::Mat& canvas, const Matrix4d& w_T_c );
     void renderIn( const cv::Mat& canvas, const Matrix4d& w_T_c, cv::Mat& buf );

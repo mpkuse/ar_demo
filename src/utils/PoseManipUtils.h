@@ -55,6 +55,8 @@ public:
     // Given a point convert it to cross-product matrix. A_x = [ [ 0, -c, -b ], [c,0,-a], [-b,-a,0] ]
     static void vec_to_cross_matrix( const Vector3d& a, Matrix3d& A_x );
     static void vec_to_cross_matrix( double a, double b, double c, Matrix3d& A_x );
+    static Matrix3d vec_to_cross_matrix( const Vector3d& a );
+    static Matrix3d vec_to_cross_matrix( double a, double b, double c );
 
     //
     // mat_string: `,` is element separator, `;` is row separator

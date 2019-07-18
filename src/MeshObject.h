@@ -59,6 +59,7 @@ public:
   MeshObject( string obj_name, double scaling );
 
   const string getMeshObjectName() const { return this->obj_name; }
+  const string getMeshObjectFullPathName() const { return this->obj_file_fullpath_name; }
 
   void setObjectWorldPose( Matrix4d w_T_ob );
   bool getObjectWorldPose( Matrix4d& w_T_ob );
@@ -68,7 +69,7 @@ public:
   bool isWorldPoseAvailable() const { return m_world_pose_available; }
 
   // Writes the pose to nap/resources/`obj_name`.worldpose
-  bool writeMeshWorldPose(); //TODO removal 
+  bool writeMeshWorldPose(); //TODO removal
 
   const MatrixXd& getVertices() const { return  o_X; }
   const MatrixXi& getFaces() const { return  eigen_faces; }
@@ -80,7 +81,7 @@ public:
 
 
 private:
-  string obj_name;
+  string obj_name, obj_file_fullpath_name;
   bool m_loaded; ///< true when object mesh was successfully loaded
   bool m_world_pose_available; ///< true when the object has w_T_{object}.
 
@@ -98,6 +99,13 @@ private:
   void split(const std::string &s, char delim, vector<string>& vec_of_items);
 
 
+ public:
+     double getScalingFactor() {return scaling_; }
+
+ private:
+  // This is set from the constructor. However, the vertices are already scaled when load_obj is called.
+  // This is essentially just for reference. No need to scale the 3d points again with this value.
+  double scaling_;
 };
 
 // CUrrently not in use

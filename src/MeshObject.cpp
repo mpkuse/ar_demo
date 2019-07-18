@@ -5,23 +5,26 @@ MeshObject::MeshObject()
   m_loaded = false;
   m_world_pose_available = false;
   obj_name = string( "N/A" );
+
+  scaling_ = 1.0;
 }
 
 MeshObject::MeshObject(const string obj_name, double scaling )
 {
   // when the vertices are read, a scaling is applied on the co-ordinates
 
-  cout << "Constructor MeshObject\n";
+  cout << "====Constructor MeshObject====\n";
   m_loaded = false;
   m_world_pose_available = false;
   this->obj_name = string(obj_name);
 
   string path = ros::package::getPath("ar_demo") + "/resources/";
   string obj_file_nme = path + obj_name;
+  this->obj_file_fullpath_name = obj_file_nme;
 
   // cout << "Resource Path : " << path << endl;
   cout << "Open File     : " << obj_file_nme << endl;
-  cout << "Name          : " << obj_name; 
+  cout << "Name          : " << obj_name << endl;
 
   // Loading mesh here
   load_obj( obj_file_nme , scaling);
@@ -29,6 +32,8 @@ MeshObject::MeshObject(const string obj_name, double scaling )
 
   m_world_pose_available = false;
   m_loaded = true;
+
+  scaling_ = scaling; 
 
 }
 

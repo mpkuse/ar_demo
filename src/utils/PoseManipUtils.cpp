@@ -244,6 +244,24 @@ void PoseManipUtils::vec_to_cross_matrix( double a, double b, double c, Matrix3d
 
 
 
+Matrix3d PoseManipUtils::vec_to_cross_matrix( const Vector3d& t )
+{
+    // Tx = Matrix3d::Zero();
+    Matrix3d A_x;
+    A_x << 0, -t(2) , t(1) ,
+          t(2), 0,  -t(0),
+          -t(1), t(0), 0;
+    return A_x; 
+}
+
+Matrix3d PoseManipUtils::vec_to_cross_matrix( double a, double b, double c)
+{
+    Vector3d t(a,b,c);
+    return vec_to_cross_matrix( t );
+}
+
+
+
 std::vector<std::string>
 PoseManipUtils::split( std::string const& original, char separator )
 {

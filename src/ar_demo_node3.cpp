@@ -24,6 +24,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
+#include <visualization_msgs/Marker.h>
 
 // camodocal
 #include "camodocal/camera_models/Camera.h"
@@ -39,6 +40,7 @@
 
 // My Utility Headers
 #include "utils/TermColor.h"
+
 
 using namespace std;
 using namespace Eigen;
@@ -185,13 +187,20 @@ int main(int argc, char ** argv )
     string odometry_topic_name;
     // odometry_topic_name = "/vins_estimator/camera_pose"; //< this can also be the corrected pose.
     // odometry_topic_name = "/keyframe_pose_graph_slam_node/opt_odometry"; //< this can also be the corrected pose.
-    n.getParam("odometry_topic_name", odometry_topic_name);
+    if( n.getParam("odometry_topic_name", odometry_topic_name) == false ) {
+        cout << "[ar_demo_node3] not specified ros param `odometry_topic_name`\n";
+        exit(1);
+    }
     ROS_INFO( "Subscribe to odometry_topic_name: %s", odometry_topic_name.c_str() );
     ros::Subscriber sub_odometry_topic = n.subscribe(odometry_topic_name.c_str(), 100, &ARDataManager::odom_pose_callback, manager);
 
     string raw_image_topic;
     // raw_image_topic = "/mynteye/left/image_raw";
-    n.getParam("raw_image_topic", raw_image_topic);
+    if( n.getParam("raw_image_topic", raw_image_topic) == false )
+    {
+        cout << "[ar_demo_node3] not specified ros param `raw_image_topic`\n";
+        exit(1);
+    }
     ROS_INFO( "Subscribe to Raw Image: %s", raw_image_topic.c_str() );
     ros::Subscriber sub_img = n.subscribe(raw_image_topic.c_str(), 100, &ARDataManager::raw_image_callback, manager );
 
@@ -206,6 +215,12 @@ int main(int argc, char ** argv )
     ROS_INFO( "Subscribe to Interactive Marker Pose (updates): %s", marker_pose_topic_name.c_str() );
     ros::Subscriber sub_mesh_pose = n.subscribe( marker_pose_topic_name, 1000, &ARDataManager::mesh_pose_callback, manager );
 
+
+    string surfelmap3d_pcl_topic_name = "/surfel_fusion/pointcloud";
+    ROS_INFO( "Subscribe to Surfel Map: %s", surfelmap3d_pcl_topic_name.c_str() );
+    ros::Subscriber sub_surfelmap3d_pcl = n.subscribe( surfelmap3d_pcl_topic_name, 1000, &ARDataManager::surfelmap_callback, manager );
+
+
     /////////////////////////////////////
     // Publishers
     /////////////////////////////////////
@@ -217,6 +232,11 @@ int main(int argc, char ** argv )
     ROS_INFO( "Publish ar_image_topic : %s", ar_image_topic.c_str() );
     image_transport::Publisher pub_ARimage = it.advertise(ar_image_topic, 100);
     manager->setARImagePublisher( pub_ARimage );
+
+
+    string marker_topic = "AR_marker";
+    ros::Publisher pub_model = n.advertise<visualization_msgs::Marker>("models", 1000);
+    manager->setMarkerPublisher( pub_model );
 
 
     //////////////////////////////////

@@ -22,7 +22,7 @@ ARDataManager::findClosestKey( const ros::Time& key)
             // cout << "NodeDataManager::find_indexof_node " << i << " "<< diff.sec << " " << diff.nsec << endl;
             __ARDataManager__callback(
             cout << TermColor::GREEN() << std::setprecision(20) << "found key="<< key.toSec() << " it_key=" << it_key.toSec() << TermColor::RESET();
-            )
+        )
             return it;
         }
     }
@@ -154,6 +154,117 @@ void ARDataManager::mesh_pose_callback( const geometry_msgs::PoseStamped::ConstP
     __ARDataManager__meshposecallback( cout << TermColor::RESET(); )
 
 }
+
+
+void ARDataManager::surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr pointcloud_map)
+{
+
+    if( m_ground_plane_estimated )
+    {
+        // cout << TermColor::iYELLOW() << "[ARDataManager::surfelmap_callback] ignore, since ground plane was already estimated" << TermColor::RESET() << endl;
+        return;
+    }
+
+    cout << TermColor::iYELLOW() << "[ARDataManager::surfelmap_callback]" << TermColor::RESET() << endl;
+    cout << "\theight=" << pointcloud_map->height << "\twidth=" << pointcloud_map->width << endl;
+
+    // sensor_msgs::PointCloud2 --> pcl::PointCloud<pcl::PointXYZ>::Ptr
+    pcl::PointCloud<pcl::PointXYZ>::Ptr raw_cloud (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::fromROSMsg(*pointcloud_map, *raw_cloud);
+	ros::Time map_time = pointcloud_map->header.stamp;
+
+
+    // if #pts above say 5000 try to estimate ground plane.
+    if( raw_cloud->points.size() > 20000 )
+    {
+
+            // Filtering
+            ElapsedTime _eta_;
+            _eta_.tic();
+            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered;
+            if(raw_cloud->points.size() == 0) return;
+        	cloud_filtered.reset( new pcl::PointCloud<pcl::PointXYZ>);
+            cloud_filtered->points.clear();
+            pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
+            sor.setInputCloud (raw_cloud);
+            sor.setMeanK (30);
+            sor.setStddevMulThresh (1.0);
+            sor.filter (*cloud_filtered);
+            cout << "\tElapsed (ms): " << _eta_.toc_milli() << endl;
+            cout << "\tcloud_filtered->points.size()=" << cloud_filtered->points.size() << endl;
+
+
+
+        #if 0
+        cout << "Saving point cloud\n";
+        pcl::io::savePCDFile("/tmp/estimate.pcd", *cloud_filtered);
+        cout << "Saving point cloud done\n";
+        #endif
+
+        // Estimate Ground Plane
+        vector<int> int_inliers;
+        VectorXf coeff = EstimationFromPointClouds::estimate_ground_plane_from_pointcloud( cloud_filtered, int_inliers, 0.13, true );
+        assert( coeff.rows() == 4 );
+        cout << "[ARDataManager::surfelmap_callback] coeff of ground plane: " << coeff.transpose() << endl;
+
+
+        // Estimate Plane Orientation
+        Matrix3d wRp = EstimationFromPointClouds::estimate_plane_orientation_wRp( coeff.cast<double>() );
+        cout << "[ARDataManager::surfelmap_callback]wRp:\n" << wRp << endl;
+
+        Matrix4d wTp = Matrix4d::Identity();
+        wTp.topLeftCorner(3,3) = wRp;
+        wTp.col(3).topRows(3) = EstimationFromPointClouds::random_pt_on_plane( coeff.cast<double>(), 2, 3, -.5, .5 );
+        cout << "[ARDataManager::surfelmap_callback]wTp:\n" << wTp << endl;
+
+
+        // note this down in class variables.
+        this->groundplane_coeff = coeff.cast<double>();
+        this->groundplane_wTp = wTp;
+        m_ground_plane_estimated = true;
+
+
+        // publish ground plane markers
+        if( isPubMarkerset )
+        {
+            visualization_msgs::Marker gplane;
+            RosMarkerUtils::init_plane_marker(  gplane, 20, 10, 0.82, 0.7, 0.54, 0.6 );
+            gplane.ns = "ground_plane";
+            gplane.id = 0;
+            RosMarkerUtils::setpose_to_marker( this->groundplane_wTp, gplane );
+            pub_marker.publish( gplane );
+
+            visualization_msgs::Marker axis_marker;
+            RosMarkerUtils::init_XYZ_axis_marker( axis_marker );
+            axis_marker.ns = "on_plane_axis";
+            axis_marker.id = 0;
+            RosMarkerUtils::setpose_to_marker( this->groundplane_wTp, axis_marker );
+            pub_marker.publish( axis_marker );
+
+
+            // mesh_pose_callback(  );
+
+
+            // publish mesh with wTp
+            visualization_msgs::Marker mesh_marker;
+            RosMarkerUtils::init_mesh_marker( mesh_marker );
+            mesh_marker.ns = "mesh_"+string("chair.obj");
+            mesh_marker.id = 0;
+            auto mesh_obj = renderer->getMesh( "chair.obj" );
+            RosMarkerUtils::setscaling_to_marker( mesh_obj->getScalingFactor(), mesh_marker );
+            mesh_marker.mesh_resource = "package://ar_demo/resources/"+mesh_obj->getMeshObjectName();
+            pub_marker.publish( mesh_marker );
+
+
+
+        }
+
+    }
+
+    // if #pts above say 5000 try to estimate box.
+
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 void ARDataManager::monitor_thread( int hz, bool printing )
@@ -317,7 +428,7 @@ void ARDataManager::run_thread( int hz )
             renderer->renderIn( node->getImage(), node->getPose(), buffer );
             prev_rendered_stamp = node->getImageTimestamp();
 
-        }
+
 
         #endif
 

@@ -31,8 +31,19 @@
 #include "utils/TermColor.h"
 #include "utils/ElapsedTime.h"
 
+#include "utils/RosMarkerUtils.h"
+#include "utils/PoseManipUtils.h"
+#include "utils/EstimationFromPointClouds.h"
+
 #include "ARDataNode.h"
 #include "SceneRenderer.h"
+
+// PCL Library
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 
 using namespace std;
 using namespace Eigen;
@@ -45,6 +56,8 @@ public:
     {
         run_thread_flag = false;
         monitor_thread_flag=false;
+
+        m_ground_plane_estimated = false;
     }
 
     ~ARDataManager()
@@ -63,12 +76,19 @@ public:
         isPubARImageset = true;
     }
 
+    void setMarkerPublisher( ros::Publisher& pub_marker )
+    {
+        this->pub_marker = pub_marker;
+        isPubMarkerset = true;
+    }
+
 
     // callbacks
     void raw_image_callback( const sensor_msgs::ImageConstPtr msg );
     void odom_pose_callback( const nav_msgs::Odometry::ConstPtr msg ); ///< w_T_c. pose of camera in the world-cordinate system. All the cameras. only a subset of this will be keyframes
     void imuodom_pose_callback( const nav_msgs::Odometry::ConstPtr msg ); //< w_T_imu. pose of the imu in world-cordinate. @200hz
     void mesh_pose_callback( const geometry_msgs::PoseStamped::ConstPtr msg ); //< updates the pose of mesh(i) which are inside renderer.
+    void surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr pointcloud_map);
 
 
     // thread -
@@ -106,5 +126,14 @@ private:
     // image publisher
     image_transport::Publisher pub_ARimage;
     bool isPubARImageset = false;
+
+    // marker publisher
+    ros::Publisher pub_marker;
+    bool isPubMarkerset = false;
+
+    // Ground Plane
+    atomic<bool> m_ground_plane_estimated;
+    VectorXd groundplane_coeff;
+    Matrix4d groundplane_wTp;
 
 };
