@@ -86,15 +86,27 @@ public:
     // callbacks
     void raw_image_callback( const sensor_msgs::ImageConstPtr msg );
     void odom_pose_callback( const nav_msgs::Odometry::ConstPtr msg ); ///< w_T_c. pose of camera in the world-cordinate system. All the cameras. only a subset of this will be keyframes
-    void imuodom_pose_callback( const nav_msgs::Odometry::ConstPtr msg ); //< w_T_imu. pose of the imu in world-cordinate. @200hz
+
+
     void mesh_pose_callback( const geometry_msgs::PoseStamped::ConstPtr msg ); //< updates the pose of mesh(i) which are inside renderer.
     void surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr pointcloud_map);
 
+    void detailed_path_callback( const nav_msgs::Path::ConstPtr msg );
+    void hz200_imu_callback( const geometry_msgs::PoseStamped::ConstPtr msg );
+private:
+    // in the `hz200_imu_callback` we simply push msgs on the queue.
+    // in the rendering thread, we pop from the queue
+    mutable std::mutex imuprop_msgs_mutex;
+    std::queue<geometry_msgs::PoseStamped> imuprop_msgs;
+
+
+public:
 
     // thread -
     void run_thread_enable() { run_thread_flag=true; }
     void run_thread_disable() { run_thread_flag=false; }
-    void run_thread( int hz);
+    // void run_thread( int hz);
+    void run_thread_duo( int hz); //newer
 
     // thread - monitor
     void monitor_thread_enable() { monitor_thread_flag=true; }
@@ -105,14 +117,19 @@ public:
     // returns the latest node where camera pose (and image_raw) is available (ie. green)
     const ARDataNode* latestNodeWherePoseisAvailable() const;
 
-    // returns the latest node where atleast imu pose is available
-    const ARDataNode* latestNodeWhereIMUPoseisAvailable() const;
+    // returns the latest node where optimized pose is available (in addition to the image)
+    const ARDataNode* latestNodeWhereOptPoseisAvailable() const;
+
+    // latest node where image is available
+    const ARDataNode* latestNodeWhereImageisAvailable() const;
+
 
 private:
     mutable std::mutex data_map_mutex;
     std::map< ros::Time, ARDataNode* > data_map;
 
-    std::map<ros::Time,ARDataNode*>::iterator findClosestKey( const ros::Time& key);
+    std::map<ros::Time,ARDataNode*>::iterator findClosestKey( const ros::Time& key)  ;
+    std::map<ros::Time,ARDataNode*>::iterator findClosestKeyApprox( const ros::Time& key) ;
 
     // run thread
     atomic<bool> run_thread_flag;
@@ -135,5 +152,21 @@ private:
     atomic<bool> m_ground_plane_estimated;
     VectorXd groundplane_coeff;
     Matrix4d groundplane_wTp;
+
+
+
+
+    //////// cam imu extrinsic (this is published by vins estimator node)
+public:
+    void extrinsic_cam_imu_callback( const nav_msgs::Odometry::ConstPtr msg );
+    Matrix4d get_imu_T_cam() const;
+    void get_imu_T_cam( Matrix4d& res, ros::Time& _t ) const;
+    bool is_imu_T_cam_available() const;
+
+private:
+    mutable mutex imu_cam_mx;
+    bool imu_T_cam_available = false;
+    Matrix4d imu_T_cam;
+    ros::Time imu_T_cam_stamp;
 
 };

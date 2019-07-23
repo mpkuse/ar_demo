@@ -184,15 +184,9 @@ int main(int argc, char ** argv )
     //   a) Camera Odometry and Corrected Odometry (from pose graph optimization node)
     //   b) Raw Images
     //   c) Updates to pose (optional.)
-    string odometry_topic_name;
-    // odometry_topic_name = "/vins_estimator/camera_pose"; //< this can also be the corrected pose.
-    // odometry_topic_name = "/keyframe_pose_graph_slam_node/opt_odometry"; //< this can also be the corrected pose.
-    if( n.getParam("odometry_topic_name", odometry_topic_name) == false ) {
-        cout << "[ar_demo_node3] not specified ros param `odometry_topic_name`\n";
-        exit(1);
-    }
-    ROS_INFO( "Subscribe to odometry_topic_name: %s", odometry_topic_name.c_str() );
-    ros::Subscriber sub_odometry_topic = n.subscribe(odometry_topic_name.c_str(), 100, &ARDataManager::odom_pose_callback, manager);
+
+
+
 
     string raw_image_topic;
     // raw_image_topic = "/mynteye/left/image_raw";
@@ -205,10 +199,25 @@ int main(int argc, char ** argv )
     ros::Subscriber sub_img = n.subscribe(raw_image_topic.c_str(), 100, &ARDataManager::raw_image_callback, manager );
 
 
+
+
+    string odometry_topic_name;
+    // odometry_topic_name = "/vins_estimator/camera_pose"; //< this can also be the corrected pose.
+    // odometry_topic_name = "/keyframe_pose_graph_slam_node/opt_odometry"; //< this can also be the corrected pose.
+    if( n.getParam("odometry_topic_name", odometry_topic_name) == false ) {
+        cout << "[ar_demo_node3] not specified ros param `odometry_topic_name`\n";
+        exit(1);
+    }
+    ROS_INFO( "Subscribe to odometry_topic_name: %s", odometry_topic_name.c_str() );
+    ros::Subscriber sub_odometry_topic = n.subscribe(odometry_topic_name.c_str(), 100, &ARDataManager::odom_pose_callback, manager);
+
+    #if 0
+
     // this is currently not in use, but be careful with this as it is at 200hz and its imu pose not the camera_pose.
     string imupose_topic_name = "/vins_estimator/imu_propagate"; //< this can also be the corrected pose.
     ROS_INFO( "Subscribe to imupose_topic_name: %s", imupose_topic_name.c_str() );
     ros::Subscriber sub_imuodometry_topic = n.subscribe(imupose_topic_name.c_str(), 100, &ARDataManager::imuodom_pose_callback, manager);
+    #endif
 
 
     string marker_pose_topic_name = "/interactive_marker_server/object_mesh_pose";
@@ -219,6 +228,26 @@ int main(int argc, char ** argv )
     string surfelmap3d_pcl_topic_name = "/surfel_fusion/pointcloud";
     ROS_INFO( "Subscribe to Surfel Map: %s", surfelmap3d_pcl_topic_name.c_str() );
     ros::Subscriber sub_surfelmap3d_pcl = n.subscribe( surfelmap3d_pcl_topic_name, 1000, &ARDataManager::surfelmap_callback, manager );
+
+
+
+    //-- subscribe to imu_T_cam : imu camera extrinsic calib. Will store this just in case there is a need
+    //   this is published by vins_estimator node.
+    string extrinsic_cam_imu_topic = string("/vins_estimator/extrinsic");
+    ROS_INFO( "Subscribe to extrinsic_cam_imu_topic: %s", extrinsic_cam_imu_topic.c_str() );
+    ros::Subscriber sub_cam_imu_extrinsic = n.subscribe( extrinsic_cam_imu_topic, 1000, &ARDataManager::extrinsic_cam_imu_callback, manager );
+
+
+    // detailed path - published by mpkuse's posegraph solver.
+    // frame_id contains : separated worldid and setID_of_worldID.
+    // poses are in imu frame of reference
+    string detailed_path_topic = string( "/keyframe_pose_graph_slam_node/adhoc/xpath_detailed");
+    ROS_INFO( "Subscribe to xpath_detailed from pose graph solver : %s", detailed_path_topic.c_str() );
+    ros::Subscriber sub_detailed_path = n.subscribe( detailed_path_topic, 100, &ARDataManager::detailed_path_callback, manager );
+
+    string hz200_ws_T_imu = string( "/keyframe_pose_graph_slam_node/hz200/posestamped");
+    ROS_INFO( "Subscribe to hz200 imu from pose graph solver : %s", hz200_ws_T_imu.c_str() );
+    ros::Subscriber sub_hz200_imupose = n.subscribe( hz200_ws_T_imu, 100, &ARDataManager::hz200_imu_callback, manager );
 
 
     /////////////////////////////////////
@@ -245,11 +274,13 @@ int main(int argc, char ** argv )
 
     // this thread monitors data_map and removes old items, and optionally prints status
     manager->monitor_thread_enable();
-    std::thread t_monitor( &ARDataManager::monitor_thread, manager, 1 , false);
+    std::thread t_monitor( &ARDataManager::monitor_thread, manager, 1 , true);
 
     // this thread monitors the data_map periodically and renders if it sees something new
     manager->run_thread_enable();
-    std::thread t_render( &ARDataManager::run_thread, manager, 30 );
+    // manager->run_thread_disable();
+    // std::thread t_render( &ARDataManager::run_thread, manager, 30 );
+    std::thread t_render( &ARDataManager::run_thread_duo, manager, 30 );
 
 
     ROS_INFO( "spin()");
@@ -262,5 +293,7 @@ int main(int argc, char ** argv )
     t_monitor.join();
 
     // manager->~ARDataManager();
+
+    return 0;
 
 }

@@ -1,6 +1,6 @@
 <launch>
   <arg name="ar_obj_list" default="chair.obj" />
-  <arg name="ar_mesh_scaling_list" default=".07" />
+  <arg name="ar_mesh_scaling_list" default=".2" />
   <arg name="ar_controls_scaling_list" default="1.5" />
   <arg name="ar_mesh_initial_positions_list" default="0,0,-0.5" />
 

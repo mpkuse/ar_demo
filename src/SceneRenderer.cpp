@@ -180,7 +180,7 @@ bool SceneRenderer::setWorldPoseOfMesh( string mesh_id, const Matrix4d& w_T_obj 
     if( meshmap.count(mesh_id) > 0 )
     {
         meshmap[mesh_id]->setObjectWorldPose( w_T_obj );
-        // cout << "[SceneRenderer::setWorldPoseOfMesh] successfully set for mesh_id=" << mesh_id << " pose=" << PoseManipUtils::prettyprintMatrix4d( w_T_obj ) << endl;
+        cout << "[SceneRenderer::setWorldPoseOfMesh] successfully set for mesh_id=" << mesh_id << " pose=" << PoseManipUtils::prettyprintMatrix4d( w_T_obj ) << endl;
         return true;
     }
     else {

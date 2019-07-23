@@ -7,7 +7,9 @@ ARDataNode::ARDataNode()
 {
     is_pose_available = false;
     is_image_available = false;
-    is_imupose_available = false;
+    // is_imupose_available = false;
+
+    is_opt_pose_available = false;
 }
 
 ARDataNode::~ARDataNode()
@@ -19,7 +21,7 @@ ARDataNode::~ARDataNode()
 
     is_pose_available = false;
     is_image_available = false;
-    is_imupose_available = false;
+    // is_imupose_available = false;
 }
 
 const Matrix4d& ARDataNode::getPose() const
@@ -36,12 +38,7 @@ const cv::Mat& ARDataNode::getImage() const
     return image;
 }
 
-const Matrix4d& ARDataNode::getIMUPose() const
-{
-    std::lock_guard<std::mutex> lk(vars_mutex);
-    assert( is_imupose_available && "[ARDataNode::getIMUPose] imupose doesn't appear to be set and you are requesting an imupose");
-    return w_T_imu;
-}
+
 
 void ARDataNode::setImageFromMsg( const sensor_msgs::ImageConstPtr msg )
 {
@@ -62,11 +59,20 @@ void ARDataNode::setPoseFromMsg(  const nav_msgs::Odometry::ConstPtr msg )
     is_pose_available = true;
 }
 
-void ARDataNode::setIMUPoseFromMsg(  const nav_msgs::Odometry::ConstPtr msg )
+
+void ARDataNode::setOptCamPose( ros::Time _t, const Matrix4d _ws_T_cam, int _worldID, int _setID_of_worldID  )
+{
+    timestamp_opt_pose = _t;
+    ws_T_cam = _ws_T_cam;
+    worldID = _worldID;
+    setID_of_worldID = _setID_of_worldID;
+    is_opt_pose_available = true;
+
+}
+
+const Matrix4d& ARDataNode::getOptCamPose() const
 {
     std::lock_guard<std::mutex> lk(vars_mutex);
-    PoseManipUtils::geometry_msgs_Pose_to_eigenmat( msg->pose.pose, w_T_imu );
-
-    timestamp_imupose = msg->header.stamp;
-    is_imupose_available = true;
+    assert( is_opt_pose_available && "[ARDataNode::getOptCamPose] opt pose doesn't appear to be set and you are requesting a pose");
+    return ws_T_cam;
 }

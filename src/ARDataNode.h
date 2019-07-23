@@ -36,6 +36,7 @@
 #include "utils/TermColor.h"
 #include "utils/ElapsedTime.h"
 #include "utils/PoseManipUtils.h"
+#include "utils/MiscUtils.h"
 
 using namespace Eigen;
 
@@ -53,13 +54,18 @@ public:
     const ros::Time getImageTimestamp() const { return timestamp_image; }
     const cv::Mat& getImage() const;
 
-    bool isIMUPoseAvailable() const {return is_imupose_available; }
-    const ros::Time getIMUPoseTimestamp() const { return timestamp_imupose; }
-    const Matrix4d& getIMUPose() const;
 
     void setImageFromMsg( const sensor_msgs::ImageConstPtr msg );
-    void setPoseFromMsg(  const nav_msgs::Odometry::ConstPtr msg );
-    void setIMUPoseFromMsg(  const nav_msgs::Odometry::ConstPtr msg );
+    void setPoseFromMsg(  const nav_msgs::Odometry::ConstPtr msg ); // TODO remove/rename. dont pass msg
+
+
+
+    void setOptCamPose( ros::Time _t, const Matrix4d ws_T_cam, int worldID, int setID_of_worldID  );
+    bool isOptPoseAvailable() const {return is_opt_pose_available; }
+    const ros::Time getOptPoseTimestamp() const { return timestamp_opt_pose; }
+    const Matrix4d& getOptCamPose() const;
+    const int getOptPose_worldID() const { return worldID; }
+    const int getOptPose_setID_of_worldID() const { return setID_of_worldID; }
 
 private:
     mutable std::mutex vars_mutex;
@@ -72,7 +78,10 @@ private:
     cv::Mat image;
     std::atomic<bool> is_image_available;
 
-    ros::Time timestamp_imupose;
-    Matrix4d w_T_imu;
-    std::atomic<bool> is_imupose_available;
+
+    ros::Time timestamp_opt_pose;
+    Matrix4d ws_T_cam; // pose of camera (strictly) in ref frame of setID_of_worldID
+    int worldID;
+    int setID_of_worldID;
+    std::atomic<bool> is_opt_pose_available;
 };

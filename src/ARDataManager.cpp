@@ -1,46 +1,48 @@
 #include "ARDataManager.h"
 
 
-// #define __ARDataManager__callback( msg ) msg;
-#define __ARDataManager__callback( msg ) ;
+
 
 std::map<ros::Time,ARDataNode*>::iterator
 ARDataManager::findClosestKey( const ros::Time& key)
 {
-    if( data_map.size() == 0 ) {
-        __ARDataManager__callback( cout << "not found coz data_map was empty" );
-        return data_map.end();
-    }
-
-    for( auto it=data_map.begin() ; it!=data_map.end() ; it++ )
-    {
-        ros::Time it_key = it->first;
-
-        // compare key and it_key
-        ros::Duration diff = it_key - key;
-        if( (diff.sec == 0  &&  abs(diff.nsec) < 1000000) || (diff.sec == -1  &&  diff.nsec > (1000000000-1000000) )  ) {
-            // cout << "NodeDataManager::find_indexof_node " << i << " "<< diff.sec << " " << diff.nsec << endl;
-            __ARDataManager__callback(
-            cout << TermColor::GREEN() << std::setprecision(20) << "found key="<< key.toSec() << " it_key=" << it_key.toSec() << TermColor::RESET();
-        )
-            return it;
-        }
-    }
-
-    __ARDataManager__callback(
-    cout << TermColor::RED() << "Notfound t=" << std::setprecision(20) << key.toSec() << TermColor::RESET();
-    )
-    return data_map.end();
+    return data_map.find(key);
 }
 
+std::map<ros::Time,ARDataNode*>::iterator
+ARDataManager::findClosestKeyApprox( const ros::Time& key)
+{
+    for( auto it=data_map.begin() ; it!=data_map.end() ; it++ )
+    {
+        if( abs( int64_t(it->first.toNSec()) - int64_t(key.toNSec())) < (int64_t) 1000000L )
+            return it;
+    }
 
+    return data_map.end();
+
+}
+
+//=============================================================================//
+//--------------------------- Image Raw ---------------------------------------//
+
+// this will only print timestamp when callback comes.
+// #define __ARDataManager__callback( msg ) msg;
+#define __ARDataManager__callback( msg ) ;
+
+
+
+// #define __ARDataManager__raw_image_callback( msg ) msg;
+#define __ARDataManager__raw_image_callback( msg ) ;
 
 void ARDataManager::raw_image_callback( const sensor_msgs::ImageConstPtr msg )
 {
     std::lock_guard<std::mutex> lk(data_map_mutex);
 
-    __ARDataManager__callback(
+    __ARDataManager__raw_image_callback(
         std::cout << "[raw_image_callback] msg.t=" << msg->header.stamp << "\t";
+    )
+    __ARDataManager__callback(
+        std::cout << "[raw_image_callback] msg.t=" << msg->header.stamp << "\n";
     )
     ARDataNode * node = NULL;
 
@@ -53,75 +55,152 @@ void ARDataManager::raw_image_callback( const sensor_msgs::ImageConstPtr msg )
 
     auto it = findClosestKey( msg->header.stamp );
     if( it==data_map.end() ) {//not found
+        __ARDataManager__raw_image_callback( cout << "--Not Found so allocate new--"; )
         node = new ARDataNode(); //so allocate new
         data_map[ msg->header.stamp ] = node;
     } else{
+        __ARDataManager__raw_image_callback( cout << "--Found--"; )
          node = it->second;
      }
 
-    __ARDataManager__callback(
+    __ARDataManager__raw_image_callback(
         cout << "setImageFromMsg\n";
     )
     node->setImageFromMsg( msg );
 }
 
-
+//=============================================================================//
+//--------------------- Pose Info from vins_estimator -------------------------//
+// #define __ARDataManager__odom_pose_callback(msg) msg;
+#define __ARDataManager__odom_pose_callback(msg) ;
 void ARDataManager::odom_pose_callback( const nav_msgs::Odometry::ConstPtr msg ) ///< w_T_c. pose of camera in the world-cordinate system. All the cameras. only a subset of this will be keyframes
 {
     std::lock_guard<std::mutex> lk(data_map_mutex);
 
-    __ARDataManager__callback(
+    __ARDataManager__odom_pose_callback(
     std::cout << "[odom_pose_callback] t=" << msg->header.stamp << "\t";
     )
+    __ARDataManager__callback( std::cout << "[odom_pose_callback] t=" << msg->header.stamp << "\n";)
     ARDataNode * node = NULL;
 
 
-    auto it = findClosestKey( msg->header.stamp );
+    auto it = findClosestKeyApprox( msg->header.stamp );
     if( it==data_map.end() ) {//not found
-        node = new ARDataNode(); //so allocate new
-        data_map[ msg->header.stamp ] = node;
+        __ARDataManager__odom_pose_callback(
+        cout << TermColor::RED() << "not found\t" << TermColor::RESET(); )
+
     } else{
-         node = it->second;
+        __ARDataManager__odom_pose_callback(
+        cout << TermColor::GREEN() << "found at it_=" << it->first << "\t" << TermColor::RESET();)
+        node = it->second;
     }
 
-    __ARDataManager__callback(
+    __ARDataManager__odom_pose_callback(
     cout << "setPoseFromMsg\n";
     )
     node->setPoseFromMsg( msg );
 }
 
-void ARDataManager::imuodom_pose_callback( const nav_msgs::Odometry::ConstPtr msg ) ///< w_T_c. pose of camera in the world-cordinate system. All the cameras. only a subset of this will be keyframes
+
+
+//=============================================================================//
+//-------------------- Pose From Pose Graph Solver ----------------------------//
+// #define __ARDataManager__detailed_path_callback__( msg ) msg;
+#define __ARDataManager__detailed_path_callback__( msg ) ;
+void ARDataManager::detailed_path_callback( const nav_msgs::Path::ConstPtr msg )
 {
+
     std::lock_guard<std::mutex> lk(data_map_mutex);
 
-    __ARDataManager__callback(
-    std::cout << "[imuodom_pose_callback] t=" << msg->header.stamp << "\t";
+    __ARDataManager__detailed_path_callback__(
+    cout << TermColor::iGREEN() << "[detailed_path_callback] len=" << msg->poses.size() << endl << TermColor::RESET();
     )
-    ARDataNode * node = NULL;
 
-
-    auto it = findClosestKey( msg->header.stamp );
-    if( it==data_map.end() ) {//not found
-        __ARDataManager__callback( cout << "ignore imu msg" << endl; )
-        return;
-        // node = new ARDataNode(); //so allocate new
-        // data_map[ msg->header.stamp ] = node;
-    } else{
-         node = it->second;
+    __ARDataManager__detailed_path_callback__(
+    cout << "items in data_map:\n";
+    for( auto it=data_map.begin() ; it!=data_map.end() ; it++ )
+    {
+        cout << it->first << "\t";
     }
-
-    __ARDataManager__callback(
-    cout << "setIMUPoseFromMsg\n";
+    cout << endl;
     )
-    node->setIMUPoseFromMsg( msg );
+
+    for( auto it=msg->poses.begin() ; it!=msg->poses.end() ; it++ ) //loop over all poses in path
+    {
+        __ARDataManager__detailed_path_callback__(
+        // --- print
+        cout << "i=" << it-msg->poses.begin() << "\t";
+        cout << "t=" << it->header.stamp << "\t";
+        // cout << "frame_id=" << it->header.frame_id << "\t";
+        )
+
+        // --- basic info
+        int this__i = it-msg->poses.begin();
+        ros::Time this__t = it->header.stamp;
+        string this__frameid = it->header.frame_id;
+
+        vector<string> after_split = MiscUtils::split(this__frameid, ':' );
+        if( after_split.size() != 4 ) {
+            cout << "[ARDataManager::detailed_path_callback]ERROR: I am expecting frame_id to have 4 fields separated by `:`. worldID:<num>:setID_of_worldID:<num>\n";
+            exit(1);
+        }
+        int this__worldID = std::stoi( after_split[1] );
+        int this__setID_of_worldID = std::stoi( after_split[3] );
+        __ARDataManager__detailed_path_callback__(
+        cout << "worldID=" << this__worldID << "\t";
+        cout << "setID_of_worldID=" << this__setID_of_worldID << "\t";)
+
+
+        // --- ws_T_cam
+        #if 1
+        // I assume, the poses in the path message are in reference of imu.
+        Matrix4d ws_T_imu = Matrix4d::Identity();
+        PoseManipUtils::geometry_msgs_Pose_to_eigenmat( it->pose, ws_T_imu );
+        assert( is_imu_T_cam_available() );
+        Matrix4d ws_T_cam = ws_T_imu * this->get_imu_T_cam();
+        #else
+        // I assume the poses in path message in reference of camera
+        Matrix4d ws_T_cam = Matrix4d::Identity();
+        PoseManipUtils::geometry_msgs_Pose_to_eigenmat( it->pose, ws_T_cam );
+        #endif
+
+        __ARDataManager__detailed_path_callback__(
+        cout << "ws_T_cam: " << PoseManipUtils::prettyprintMatrix4d( ws_T_cam );)
+
+
+        //--- lookup
+        // auto it_f = data_map.find( this__t );
+        auto it_f = findClosestKeyApprox( this__t );
+        if( it_f != data_map.end() ) {
+            __ARDataManager__detailed_path_callback__(
+            cout << TermColor::GREEN() << "Found it_f=" << it_f->first << "\t" << TermColor::RESET(); )
+            it_f->second->setOptCamPose( this__t,  ws_T_cam, this__worldID, this__setID_of_worldID );
+        }
+        else {
+            __ARDataManager__detailed_path_callback__(
+            cout << TermColor::RED() << "NOT Found\t" << TermColor::RESET();
+            )
+        }
+
+
+        __ARDataManager__detailed_path_callback__(
+        cout << endl;)
+    }
 }
 
+void ARDataManager::hz200_imu_callback( const geometry_msgs::PoseStamped::ConstPtr msg )
+{
+    __ARDataManager__callback(
+    cout << "hz200_imu_callback" << msg->header.stamp << "\n";)
 
+    std::lock_guard<std::mutex> lk(imuprop_msgs_mutex);
+    imuprop_msgs.push( *msg );
+}
 
+//=============================================================================//
+//------------------------ Poses of Virtual Objects ---------------------------//
 #define __ARDataManager__meshposecallback( msg ) msg;
 // #define __ARDataManager__meshposecallback( msg ) ;
-
-
 /// This will update the mesh-pose upon receiving the message from `interactive_marker_server`
 void ARDataManager::mesh_pose_callback( const geometry_msgs::PoseStamped::ConstPtr msg )
 {
@@ -155,7 +234,8 @@ void ARDataManager::mesh_pose_callback( const geometry_msgs::PoseStamped::ConstP
 
 }
 
-
+// #define __ARDataManager__surfelmap_callback( msg ) msg;
+#define __ARDataManager__surfelmap_callback( msg ) ;
 void ARDataManager::surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr pointcloud_map)
 {
 
@@ -165,8 +245,10 @@ void ARDataManager::surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr 
         return;
     }
 
+    __ARDataManager__surfelmap_callback(
     cout << TermColor::iYELLOW() << "[ARDataManager::surfelmap_callback]" << TermColor::RESET() << endl;
     cout << "\theight=" << pointcloud_map->height << "\twidth=" << pointcloud_map->width << endl;
+    )
 
     // sensor_msgs::PointCloud2 --> pcl::PointCloud<pcl::PointXYZ>::Ptr
     pcl::PointCloud<pcl::PointXYZ>::Ptr raw_cloud (new pcl::PointCloud<pcl::PointXYZ>);
@@ -190,8 +272,10 @@ void ARDataManager::surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr 
             sor.setMeanK (30);
             sor.setStddevMulThresh (1.0);
             sor.filter (*cloud_filtered);
-            cout << "\tElapsed (ms): " << _eta_.toc_milli() << endl;
+            __ARDataManager__surfelmap_callback(
+            cout << "\tPointCloud Filtering Elapsed (ms): " << _eta_.toc_milli() << endl;
             cout << "\tcloud_filtered->points.size()=" << cloud_filtered->points.size() << endl;
+            )
 
 
 
@@ -202,20 +286,26 @@ void ARDataManager::surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr 
         #endif
 
         // Estimate Ground Plane
+        _eta_.tic();
         vector<int> int_inliers;
         VectorXf coeff = EstimationFromPointClouds::estimate_ground_plane_from_pointcloud( cloud_filtered, int_inliers, 0.13, true );
         assert( coeff.rows() == 4 );
+        __ARDataManager__surfelmap_callback(
         cout << "[ARDataManager::surfelmap_callback] coeff of ground plane: " << coeff.transpose() << endl;
+        cotut << "Ground PLane Estimation took (ms): " << _eta_.toc_milli() << endl;
+        )
 
 
         // Estimate Plane Orientation
         Matrix3d wRp = EstimationFromPointClouds::estimate_plane_orientation_wRp( coeff.cast<double>() );
-        cout << "[ARDataManager::surfelmap_callback]wRp:\n" << wRp << endl;
+        __ARDataManager__surfelmap_callback(
+        cout << "[ARDataManager::surfelmap_callback]wRp:\n" << wRp << endl; )
 
         Matrix4d wTp = Matrix4d::Identity();
         wTp.topLeftCorner(3,3) = wRp;
-        wTp.col(3).topRows(3) = EstimationFromPointClouds::random_pt_on_plane( coeff.cast<double>(), 2, 3, -.5, .5 );
-        cout << "[ARDataManager::surfelmap_callback]wTp:\n" << wTp << endl;
+        wTp.col(3).topRows(3) = EstimationFromPointClouds::random_pt_on_plane( coeff.cast<double>(), 4, 8, -4., 0. );
+        __ARDataManager__surfelmap_callback(
+        cout << "[ARDataManager::surfelmap_callback]wTp:\n" << wTp << endl;)
 
 
         // note this down in class variables.
@@ -242,16 +332,24 @@ void ARDataManager::surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr 
             pub_marker.publish( axis_marker );
 
 
+
             // mesh_pose_callback(  );
+            string mesh__id = "chair.obj";
+            bool status = renderer->setWorldPoseOfMesh( mesh__id, this->groundplane_wTp );
+            if( status == false ) {
+                cout << "[ARDataManager::surfelmap_callback]renderer->setWorldPoseOfMesh failed\n";
+                exit(1);
+            }
 
 
             // publish mesh with wTp
             visualization_msgs::Marker mesh_marker;
             RosMarkerUtils::init_mesh_marker( mesh_marker );
-            mesh_marker.ns = "mesh_"+string("chair.obj");
+            mesh_marker.ns = "mesh_"+mesh__id;
             mesh_marker.id = 0;
             auto mesh_obj = renderer->getMesh( "chair.obj" );
             RosMarkerUtils::setscaling_to_marker( mesh_obj->getScalingFactor(), mesh_marker );
+            RosMarkerUtils::setpose_to_marker( this->groundplane_wTp, mesh_marker );
             mesh_marker.mesh_resource = "package://ar_demo/resources/"+mesh_obj->getMeshObjectName();
             pub_marker.publish( mesh_marker );
 
@@ -266,11 +364,24 @@ void ARDataManager::surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr 
 }
 
 
+
 ///////////////////////////////////////////////////////////////////////////////
 void ARDataManager::monitor_thread( int hz, bool printing )
 {
     cout << TermColor::GREEN() << "starting thread `monitor_thread`. will have an inf-loop @" << hz << "\n" << TermColor::RESET() << endl;
     ros::Rate rate(hz);
+
+    ofstream myfile;
+    if( printing ) {
+        myfile.open("/dev/pts/7");
+        if (! myfile.is_open() )
+        {
+            cout << "[]Cannt open ffile\n";
+            exit(2);
+        }
+    }
+
+
     while( monitor_thread_flag )
     {
         {
@@ -279,33 +390,34 @@ void ARDataManager::monitor_thread( int hz, bool printing )
             if( printing )
             {
                 // cout << TermColor::BLUE() << "run_thread\n" << TermColor::RESET() << endl;
-                cout << "---monitor_thread, map_size: " << data_map.size();
+                myfile << "---monitor_thread, map_size: " << data_map.size();
                 if( data_map.size() > 0 ) {
-                cout << "  start.t=" << std::setprecision(20) << data_map.begin()->first << "  ";
-                cout << "end.t=" << std::setprecision(20) << data_map.rbegin()->first << "  ";
+                myfile << "  start.t=" << std::setprecision(20) << data_map.begin()->first << "  ";
+                myfile << "end.t=" << std::setprecision(20) << data_map.rbegin()->first << "  ";
                 }
-                cout << endl;
+                myfile << endl;
 
                 // color-coded show
                 for( auto it = data_map.begin(); it != data_map.end() ; it++ ) {
                     // auto node = it->second;
                     bool status1 = it->second->isImageAvailable();
                     bool status2 = it->second->isPoseAvailable();
-                    bool status3 = it->second->isIMUPoseAvailable();
+                    bool status3 = it->second->isOptPoseAvailable();
                     if( !status3 ) {
-                        if( status1&& status2 ) cout << TermColor::GREEN() << "|" << TermColor::RESET();
-                        if( status1&& !status2 ) cout << TermColor::YELLOW() << "|" << TermColor::RESET();
-                        if( !status1&& status2 ) cout << TermColor::BLUE() << "|" << TermColor::RESET();
-                        if( !status1&& !status2 ) cout << TermColor::RED() << "|" << TermColor::RESET();
+                        if( status1&& status2 ) myfile << TermColor::GREEN() << "|" << TermColor::RESET();
+                        if( status1&& !status2 ) myfile << TermColor::YELLOW() << "|" << TermColor::RESET();
+                        if( !status1&& status2 ) myfile << TermColor::BLUE() << "|" << TermColor::RESET();
+                        if( !status1&& !status2 ) myfile << TermColor::RED() << "|" << TermColor::RESET();
                     }
                     else {
-                        if( status1&& status2 ) cout << TermColor::iGREEN() << "|" << TermColor::RESET();
-                        if( status1&& !status2 ) cout << TermColor::iYELLOW() << "|" << TermColor::RESET();
-                        if( !status1&& status2 ) cout << TermColor::iBLUE() << "|" << TermColor::RESET();
-                        if( !status1&& !status2 ) cout << TermColor::iRED() << "|" << TermColor::RESET();
+                        if( status1&& status2 ) myfile << TermColor::iGREEN() << "|" << TermColor::RESET();
+                        if( status1&& !status2 ) myfile << TermColor::iYELLOW() << "|" << TermColor::RESET();
+                        if( !status1&& status2 ) myfile << TermColor::iBLUE() << "|" << TermColor::RESET();
+                        if( !status1&& !status2 ) myfile << TermColor::iRED() << "|" << TermColor::RESET();
                     }
+                    // myfile << it->first << endl;
                 }
-                cout << endl;
+                myfile << endl;
             }
 
 
@@ -314,7 +426,7 @@ void ARDataManager::monitor_thread( int hz, bool printing )
                 ros::Time latest_t = data_map.rbegin()->first;
                 for( auto it = data_map.begin(); it != data_map.end() ; it++ ) {
                     ros::Duration diff = latest_t - it->first;
-                    if( diff > ros::Duration(10.) ) {
+                    if( diff > ros::Duration(1) ) {
                         //remove this
                         it->second->~ARDataNode();
                         data_map.erase( it );
@@ -330,6 +442,7 @@ void ARDataManager::monitor_thread( int hz, bool printing )
     cout << TermColor::GREEN() << "finished thread `monitor_thread`\n" << TermColor::RESET() << endl;
 }
 
+#if 0
 // #define __ARDataManager__run_thread( msg ) msg;
 #define __ARDataManager__run_thread( msg ) ;
 void ARDataManager::run_thread( int hz )
@@ -353,6 +466,7 @@ void ARDataManager::run_thread( int hz )
         rate.sleep();
         __ARDataManager__run_thread( cout << "---run thread\n"; )
 
+
         const ARDataNode* node = latestNodeWherePoseisAvailable();
         const ARDataNode* nodeX = latestNodeWhereIMUPoseisAvailable();
         if( node == NULL || nodeX == NULL ) {
@@ -369,6 +483,7 @@ void ARDataManager::run_thread( int hz )
             __ARDataManager__run_thread( cout << "this was already rendered before, so ignore it\n"; )
             continue;
         }
+
 
 
         #if 0
@@ -448,11 +563,136 @@ void ARDataManager::run_thread( int hz )
     cout << TermColor::GREEN() << "finished thread `run_thread`\n" << TermColor::RESET() << endl;
 
 }
+#endif
 
 
+// #define __ARDataManager__run_thread_duo( msg ) msg;
+#define __ARDataManager__run_thread_duo( msg ) ;
+void ARDataManager::run_thread_duo( int hz) //newer
+{
+    cout << TermColor::GREEN() << "starting thread `run_thread`. will have an inf-loop @" << hz << "\n" << TermColor::RESET() << endl;
+    ros::Rate rate(hz);
+
+    if( renderer == NULL ) {
+        cout << TermColor::RED() << "you need to set the renderer (with ARDataManager::setRenderer()) before you can run this thread\n" << TermColor::RESET();
+        run_thread_flag = false;
+    }
+
+    if( isPubARImageset==false ) {
+        cout << TermColor::RED() << "you need to set AR image publisher before running this thread\n" << TermColor::RESET() ;
+        run_thread_flag = false;
+    }
+
+    ros::Time prev_rendered_stamp = ros::Time();
+    while( run_thread_flag )
+    {
+        rate.sleep();
+        // __ARDataManager__run_thread_duo( cout << "---run thread_duo\n" );
+        {
+            std::lock_guard<std::mutex> lk(data_map_mutex);
+
+
+            const ARDataNode* node =  latestNodeWhereOptPoseisAvailable();
+            const ARDataNode* nodeX = latestNodeWhereImageisAvailable();
+
+
+            if( node == NULL || nodeX==NULL ) {
+                __ARDataManager__run_thread_duo( cout << "either of node or nodeX is null. This means data_map is empty or data_map doesnot contain pose or image data\n" );
+                continue;
+            }
+
+            ros::Time t_node = node->getOptPoseTimestamp();
+            // ros::Time t_node = node->getPoseTimestamp();
+            ros::Time t_nodeX = nodeX->getImageTimestamp();
+            int64_t diff_ms =  ( int64_t(t_nodeX.toNSec()) - int64_t(t_node.toNSec()) ) / 1000000L;
+
+            if( prev_rendered_stamp >= t_nodeX ) {
+                __ARDataManager__run_thread_duo( cout << "this was already rendered before, so ignore it\n"; )
+                continue;
+            }
+
+            __ARDataManager__run_thread_duo(
+            cout << "latestNodeWhereOptPoseisAvailable=" << t_node << "\t";
+            cout << "latestNodeWhereImageisAvailable=" << t_nodeX << "\t";
+            cout << TermColor::RED() << "diff_ms=" << diff_ms  << TermColor::RESET() << "\t";
+            cout << TermColor::iYELLOW() << "WorldID,setID_of_worldID=" << node->getOptPose_worldID() << ":" << node->getOptPose_setID_of_worldID() << TermColor::RESET() << "\t";
+            cout << endl;
+            )
+
+
+            // do rendering.
+            // TODO Although using slightly old pose, the correct way is to
+            // use imu pose of the current using 200hz message
+
+
+
+            Matrix4d w0_T_node = node->getOptCamPose(); //camera pose (in world co-ordinates) at t=node
+            Matrix4d w0_T_nodeximu = Matrix4d::Identity();//TODO imu pose (in world co-ordinates) at t=nodeX
+            {
+                // get a imu pose from the queue.
+                std::lock_guard<std::mutex> lk(imuprop_msgs_mutex);
+                __ARDataManager__run_thread_duo(
+                cout << "\tlen of queue = " << imuprop_msgs.size() << endl;)
+                geometry_msgs::PoseStamped currimumsg;
+                while( !imuprop_msgs.empty() ) {
+                    currimumsg = imuprop_msgs.front();
+                    int64_t imu_t__m__image_t = int64_t(currimumsg.header.stamp.toNSec()) - int64_t(t_nodeX.toNSec());
+                    if( abs(imu_t__m__image_t) < 1000000L*5L )
+                        break;
+                    else{
+                        // __ARDataManager__run_thread_duo(
+                        // cout << "\tpop t=" << currimumsg.header.stamp ;)
+                        imuprop_msgs.pop();
+                    }
+                }
+                __ARDataManager__run_thread_duo(
+                cout << "\n\tuse imu message at t=" << currimumsg.header.stamp << "\t";
+                cout << "still have " << imuprop_msgs.size() << " imu msg in queue" << "\t";
+                cout << endl;
+                )
+
+                PoseManipUtils::geometry_msgs_Pose_to_eigenmat( currimumsg.pose, w0_T_nodeximu );
+            }
+            // TODO is_imu_T_cam_available?
+            assert( is_imu_T_cam_available() && "[ARDataManager::run_thread_duo] imu_T_cam doesnt seem to be available. I need it to " );
+            Matrix4d w0_T_nodexcam = w0_T_nodeximu * get_imu_T_cam();
+
+
+            cv::Mat buffer;
+            // render only if current setID_of_worldID is zero(ie. poses are in world-0)
+            if( node->getOptPose_setID_of_worldID() == 0 ) {
+                // renderer->renderIn( nodeX->getImage(), w0_T_node, buffer );
+                renderer->renderIn( nodeX->getImage(), w0_T_nodexcam, buffer );
+            }
+            else {
+                buffer = nodeX->getImage();
+            }
+
+            prev_rendered_stamp = t_nodeX;
+
+            #if 1
+            cv_bridge::CvImage cv_image;
+            cv_image.image = buffer;
+            cv_image.encoding = "bgr8";
+            sensor_msgs::Image ros_image_msg;
+            cv_image.toImageMsg(ros_image_msg);
+            pub_ARimage.publish( ros_image_msg );
+            #else
+            cv::imshow( "buffer", buffer );
+            cv::waitKey(10);
+            #endif
+        }
+
+    }
+
+}
+
+//////////////////////////////////////////////////////////////////////
+/////////////////////// HELPERS///////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 const ARDataNode* ARDataManager::latestNodeWherePoseisAvailable() const
 {
-    std::lock_guard<std::mutex> lk(data_map_mutex);
+    // std::lock_guard<std::mutex> lk(data_map_mutex);
     for( auto it=data_map.rbegin() ; it != data_map.rend() ; it++ )  //loop in reverse
     {
         bool status1 = it->second->isImageAvailable();
@@ -463,16 +703,103 @@ const ARDataNode* ARDataManager::latestNodeWherePoseisAvailable() const
     return NULL;
 }
 
-
-const ARDataNode* ARDataManager::latestNodeWhereIMUPoseisAvailable() const
+const ARDataNode* ARDataManager::latestNodeWhereOptPoseisAvailable() const
 {
-    std::lock_guard<std::mutex> lk(data_map_mutex);
+    // std::lock_guard<std::mutex> lk(data_map_mutex);
     for( auto it=data_map.rbegin() ; it != data_map.rend() ; it++ )  //loop in reverse
     {
         bool status1 = it->second->isImageAvailable();
-        bool status2 = it->second->isIMUPoseAvailable();
+        bool status2 = it->second->isOptPoseAvailable();
         if( status1 && status2 )
             return it->second;
     }
     return NULL;
 }
+
+
+const ARDataNode* ARDataManager::latestNodeWhereImageisAvailable() const
+{
+    // std::lock_guard<std::mutex> lk(data_map_mutex);
+    for( auto it=data_map.rbegin() ; it != data_map.rend() ; it++ )  //loop in reverse
+    {
+        bool status1 = it->second->isImageAvailable();
+        if( status1 )
+            return it->second;
+    }
+    return NULL;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// IMU_T_CAM /////////
+//////////////////////////////////////////////////////////////////////////
+
+// #define __ARDataManager__extrinsic_cam_imu_callback( msg ) msg;
+#define __ARDataManager__extrinsic_cam_imu_callback( msg ) ;
+
+void ARDataManager::extrinsic_cam_imu_callback( const nav_msgs::Odometry::ConstPtr msg )
+{
+    // __NODEDATAMANAGER_CALLBACKS( cout << TermColor::GREEN() << "[NodeDataManager::extrinsic_cam_imu_callback]" << msg->header.stamp  << TermColor::RESET() << endl; )
+
+    // Acquire lock
+    //      update imu_T_cam,
+    //      update last got timestamp
+    //      set is_imu_cam_extrinsic_available to true
+    {
+        std::lock_guard<std::mutex> lk(imu_cam_mx);
+        PoseManipUtils::geometry_msgs_Pose_to_eigenmat( msg->pose.pose, this->imu_T_cam );
+        this->imu_T_cam_stamp = msg->header.stamp;
+        this->imu_T_cam_available = true;
+
+    }
+
+
+    __ARDataManager__extrinsic_cam_imu_callback(
+    cout << TermColor::GREEN() << "[ARDataManager::extrinsic_cam_imu_callback]" << msg->header.stamp  << TermColor::RESET();
+    cout << " imu_T_cam = " << PoseManipUtils::prettyprintMatrix4d(this->imu_T_cam);
+    cout << endl;
+    )
+
+}
+
+
+Matrix4d ARDataManager::get_imu_T_cam() const
+{
+    std::lock_guard<std::mutex> lk(imu_cam_mx);
+    // Remove this if, once i am confident everythinbg is ok!
+    if( imu_T_cam_available == false )
+    {
+        ROS_ERROR( "[ARDataManager::get_imu_T_cam] posegraph solver, you requested imu_T_cam aka imu-cam extrinsic calib, but currently it is not available. FATAL ERROR.\n");
+        exit(1);
+    }
+    assert( imu_T_cam_available );
+    return imu_T_cam;
+}
+
+
+void ARDataManager::get_imu_T_cam( Matrix4d& res, ros::Time& _t ) const
+{
+    std::lock_guard<std::mutex> lk(imu_cam_mx);
+    // Remove this if, once i am confident everythinbg is ok!
+    if( imu_T_cam_available == false )
+    {
+        ROS_ERROR( "[ARDataManager::get_imu_T_cam] posegraph solver, you requested imu_T_cam aka imu-cam extrinsic calib, but currently it is not available. FATAL ERROR.\n");
+        exit(1);
+    }
+
+    assert( imu_T_cam_available );
+    res = imu_T_cam;
+    _t = imu_T_cam_stamp;
+    return;
+}
+
+bool ARDataManager::is_imu_T_cam_available() const
+{
+    std::lock_guard<std::mutex> lk(imu_cam_mx);
+    return imu_T_cam_available;
+}
+
+
+
+//////////////////////////////////////////////////////////////////////////
+// DONE IMU_T_CAM /////////
+//////////////////////////////////////////////////////////////////////////
