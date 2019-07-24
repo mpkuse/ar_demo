@@ -1,8 +1,9 @@
 <launch>
-  <arg name="ar_obj_list" default="chair.obj" />
-  <arg name="ar_mesh_scaling_list" default=".2" />
-  <arg name="ar_controls_scaling_list" default="1.5" />
-  <arg name="ar_mesh_initial_positions_list" default="0,0,-0.5" />
+  <!-- ';' (semicolor) separated lists -->
+  <arg name="ar_obj_list" default="chair.obj;ground_plane.obj" />
+  <arg name="ar_mesh_scaling_list" default=".2;5.0" />
+  <arg name="ar_controls_scaling_list" default="1.5;1.5" />
+  <arg name="ar_mesh_initial_positions_list" default="0,0,-0.5;0,0,-0.0" />
 
   <!-- <arg name="ar_obj_list" default="cube.obj" />
   <arg name="ar_mesh_scaling_list" default="1.0" />
@@ -34,7 +35,7 @@
     <!-- <param name="raw_image_topic" type="string" value="/mynteye/left/image_raw"/> -->
     <param name="raw_image_topic" type="string" value="/camera/infra1/image_rect_raw"/>
     <param name="odometry_topic_name" type="string" value="/vins_estimator/camera_pose"/>
-    <param name="ar_image_topic" type="string" value="AR_image_odom"/>
+    <param name="ar_image_topic" type="string" value="AR_image_corrected"/>
 
 </node>
 

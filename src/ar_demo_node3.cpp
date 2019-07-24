@@ -274,7 +274,7 @@ int main(int argc, char ** argv )
 
     // this thread monitors data_map and removes old items, and optionally prints status
     manager->monitor_thread_enable();
-    std::thread t_monitor( &ARDataManager::monitor_thread, manager, 1 , true);
+    std::thread t_monitor( &ARDataManager::monitor_thread, manager, 1 , false);
 
     // this thread monitors the data_map periodically and renders if it sees something new
     manager->run_thread_enable();

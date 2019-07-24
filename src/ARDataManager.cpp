@@ -303,7 +303,27 @@ void ARDataManager::surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr 
 
         Matrix4d wTp = Matrix4d::Identity();
         wTp.topLeftCorner(3,3) = wRp;
-        wTp.col(3).topRows(3) = EstimationFromPointClouds::random_pt_on_plane( coeff.cast<double>(), 4, 8, -4., 0. );
+
+        {
+            std::lock_guard<std::mutex> lk(data_map_mutex);
+
+            // Where is the current camera
+            const ARDataNode* node =  latestNodeWhereOptPoseisAvailable();
+
+
+            // get the chair's random point here:
+            assert( node != NULL );
+            Matrix4d w0_T_node = node->getOptCamPose();
+            cout << "The current camera is at: " << PoseManipUtils::prettyprintMatrix4d(w0_T_node);
+            double w0_x_node = w0_T_node(0,3);
+            double w0_y_node = w0_T_node(1,3);
+            double w0_z_node = w0_T_node(2,3);
+            wTp.col(3).topRows(3) = EstimationFromPointClouds::random_pt_on_plane( coeff.cast<double>(),
+                                w0_x_node+3, w0_x_node+5,
+                                w0_y_node-0.5, w0_y_node+0.5 );
+
+        }
+        // wTp.col(3).topRows(3) = EstimationFromPointClouds::random_pt_on_plane( coeff.cast<double>(), 4, 8, -4., 0. );
         __ARDataManager__surfelmap_callback(
         cout << "[ARDataManager::surfelmap_callback]wTp:\n" << wTp << endl;)
 
@@ -317,12 +337,14 @@ void ARDataManager::surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr 
         // publish ground plane markers
         if( isPubMarkerset )
         {
+            #if 0
             visualization_msgs::Marker gplane;
             RosMarkerUtils::init_plane_marker(  gplane, 20, 10, 0.82, 0.7, 0.54, 0.6 );
             gplane.ns = "ground_plane";
             gplane.id = 0;
             RosMarkerUtils::setpose_to_marker( this->groundplane_wTp, gplane );
             pub_marker.publish( gplane );
+            #endif
 
             visualization_msgs::Marker axis_marker;
             RosMarkerUtils::init_XYZ_axis_marker( axis_marker );
@@ -334,30 +356,58 @@ void ARDataManager::surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr 
 
 
             // mesh_pose_callback(  );
-            string mesh__id = "chair.obj";
-            bool status = renderer->setWorldPoseOfMesh( mesh__id, this->groundplane_wTp );
-            if( status == false ) {
-                cout << "[ARDataManager::surfelmap_callback]renderer->setWorldPoseOfMesh failed\n";
-                exit(1);
+            {
+                string mesh__id = "chair.obj";
+                bool status = renderer->setWorldPoseOfMesh( mesh__id, this->groundplane_wTp );
+                if( status == false ) {
+                    cout << "[ARDataManager::surfelmap_callback]renderer->setWorldPoseOfMesh failed\n";
+                    exit(1);
+                }
+
+                // publish mesh with wTp
+                visualization_msgs::Marker mesh_marker;
+                RosMarkerUtils::init_mesh_marker( mesh_marker );
+                mesh_marker.ns = "mesh_"+mesh__id;
+                mesh_marker.id = 0;
+                auto mesh_obj = renderer->getMesh( mesh__id );
+                RosMarkerUtils::setscaling_to_marker( mesh_obj->getScalingFactor(), mesh_marker );
+                RosMarkerUtils::setpose_to_marker( this->groundplane_wTp, mesh_marker );
+                mesh_marker.mesh_resource = "package://ar_demo/resources/"+mesh_obj->getMeshObjectName();
+                pub_marker.publish( mesh_marker );
+
             }
 
 
-            // publish mesh with wTp
-            visualization_msgs::Marker mesh_marker;
-            RosMarkerUtils::init_mesh_marker( mesh_marker );
-            mesh_marker.ns = "mesh_"+mesh__id;
-            mesh_marker.id = 0;
-            auto mesh_obj = renderer->getMesh( "chair.obj" );
-            RosMarkerUtils::setscaling_to_marker( mesh_obj->getScalingFactor(), mesh_marker );
-            RosMarkerUtils::setpose_to_marker( this->groundplane_wTp, mesh_marker );
-            mesh_marker.mesh_resource = "package://ar_demo/resources/"+mesh_obj->getMeshObjectName();
-            pub_marker.publish( mesh_marker );
 
+            {
+                string mesh__id = "ground_plane.obj";
+                bool status = renderer->setWorldPoseOfMesh( mesh__id, this->groundplane_wTp );
+                if( status == false ) {
+                    cout << "[ARDataManager::surfelmap_callback]renderer->setWorldPoseOfMesh failed, mesh__id=" << mesh__id << "\n";
+                    exit(1);
+                }
+
+
+                // publish mesh with wTp
+                visualization_msgs::Marker mesh_marker;
+                RosMarkerUtils::init_mesh_marker( mesh_marker );
+                mesh_marker.ns = "mesh_"+mesh__id;
+                mesh_marker.id = 0;
+                auto mesh_obj = renderer->getMesh( mesh__id );
+                RosMarkerUtils::setscaling_to_marker( mesh_obj->getScalingFactor(), mesh_marker );
+                RosMarkerUtils::setpose_to_marker( this->groundplane_wTp, mesh_marker );
+                mesh_marker.mesh_resource = "package://ar_demo/resources/"+mesh_obj->getMeshObjectName();
+                pub_marker.publish( mesh_marker );
+
+            }
 
 
         }
 
-    }
+        cout << TermColor::iRED() << "system cmd=pkill surfel_fusion \n"<< TermColor::RESET();
+        system( "pkill surfel_fusion");
+
+    } //if( npts > 20000)
 
     // if #pts above say 5000 try to estimate box.
 
@@ -373,7 +423,7 @@ void ARDataManager::monitor_thread( int hz, bool printing )
 
     ofstream myfile;
     if( printing ) {
-        myfile.open("/dev/pts/7");
+        myfile.open("/dev/pts/3");
         if (! myfile.is_open() )
         {
             cout << "[]Cannt open ffile\n";
@@ -566,8 +616,8 @@ void ARDataManager::run_thread( int hz )
 #endif
 
 
-// #define __ARDataManager__run_thread_duo( msg ) msg;
-#define __ARDataManager__run_thread_duo( msg ) ;
+#define __ARDataManager__run_thread_duo( msg ) msg;
+// #define __ARDataManager__run_thread_duo( msg ) ;
 void ARDataManager::run_thread_duo( int hz) //newer
 {
     cout << TermColor::GREEN() << "starting thread `run_thread`. will have an inf-loop @" << hz << "\n" << TermColor::RESET() << endl;
@@ -660,12 +710,21 @@ void ARDataManager::run_thread_duo( int hz) //newer
 
             cv::Mat buffer;
             // render only if current setID_of_worldID is zero(ie. poses are in world-0)
-            if( node->getOptPose_setID_of_worldID() == 0 ) {
+            if( node->getOptPose_setID_of_worldID() == 0  ) {
                 // renderer->renderIn( nodeX->getImage(), w0_T_node, buffer );
                 renderer->renderIn( nodeX->getImage(), w0_T_nodexcam, buffer );
+                cout << "renderrIn on image at t=" << nodeX->getImageTimestamp() << "\t";
+                cout << " w0_T_c=" << PoseManipUtils::prettyprintMatrix4d( w0_T_nodexcam  );
+                cout << endl;
             }
             else {
-                buffer = nodeX->getImage();
+                cv::Mat __tmpo = nodeX->getImage();
+                if( __tmpo.channels() == 3 )
+                    buffer = __tmpo.clone();
+                else
+                    cv::cvtColor(__tmpo, buffer, cv::COLOR_GRAY2BGR);
+
+                cout << "clone t="<< nodeX->getImageTimestamp() << "\n";
             }
 
             prev_rendered_stamp = t_nodeX;
