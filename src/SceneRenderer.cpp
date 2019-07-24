@@ -81,14 +81,14 @@ void SceneRenderer::renderIn( const cv::Mat& canvas, const Matrix4d& w_T_c, cv::
         for( int i=0 ; i<c_V.cols() ; i++ )
         {
           bool stati = true;
-          if( c_V(2,i) < near_clip )
+          if( c_V(2,i) < near_clip  )
             stati = false;
 
           double cos_thetaz = c_V(2,i) / sqrt( c_V(0,i)*c_V(0,i) + c_V(1,i)*c_V(1,i) +c_V(2,i)*c_V(2,i)  );
           if( cos_thetaz > 0.45 )
-            stati = true;
+            stati = stati && true;
           else
-            stati = false;
+            stati = stati && false;
 
           cliped_keep.push_back( stati );
         }

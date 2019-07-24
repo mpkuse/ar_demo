@@ -372,6 +372,7 @@ void ARDataManager::surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr 
                 auto mesh_obj = renderer->getMesh( mesh__id );
                 RosMarkerUtils::setscaling_to_marker( mesh_obj->getScalingFactor(), mesh_marker );
                 RosMarkerUtils::setpose_to_marker( this->groundplane_wTp, mesh_marker );
+                RosMarkerUtils::setcolor_to_marker( 1.0, 0.8, 0.0, 1.0, mesh_marker );
                 mesh_marker.mesh_resource = "package://ar_demo/resources/"+mesh_obj->getMeshObjectName();
                 pub_marker.publish( mesh_marker );
 
@@ -396,6 +397,7 @@ void ARDataManager::surfelmap_callback(const sensor_msgs::PointCloud2::ConstPtr 
                 auto mesh_obj = renderer->getMesh( mesh__id );
                 RosMarkerUtils::setscaling_to_marker( mesh_obj->getScalingFactor(), mesh_marker );
                 RosMarkerUtils::setpose_to_marker( this->groundplane_wTp, mesh_marker );
+                RosMarkerUtils::setcolor_to_marker( 1.0, 0.1, 0.1, .5, mesh_marker );
                 mesh_marker.mesh_resource = "package://ar_demo/resources/"+mesh_obj->getMeshObjectName();
                 pub_marker.publish( mesh_marker );
 
