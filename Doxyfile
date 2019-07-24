@@ -1,0 +1,11 @@
+PROJECT_NAME           = "MyProject"
+PROJECT_BRIEF          = "Library for loading C++ classes from C or any C-compatible FFI."
+INPUT                  = ./src
+OUTPUT_DIRECTORY       = ./docs
+PREDEFINED             = __cplusplus
+GENERATE_LATEX         = NO
+GENERATE_XML           = YES
+INLINE_SOURCES         = YES
+DISTRIBUTE_GROUP_DOC   = YES
+EXTRACT_ALL            = YES
+SOURCE_BROWSER         = YES
